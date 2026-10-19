@@ -61,3 +61,37 @@ test("пустой поиск предлагает восстановление"
   await expect(page.getByTestId("product-card")).toHaveCount(25);
   expect(runtimeErrors).toEqual([]);
 });
+
+test("личные разделы объясняют доступ и показывают безопасный пример статуса", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/orders");
+  await expect(page).toHaveTitle(/Заказы/);
+  await expect(page.getByRole("heading", { name: "Личные данные скрыты" })).toBeVisible();
+  await page.getByRole("link", { name: /YŌRI · пример/ }).click();
+  await expect(page).toHaveURL(/\/orders\/preview$/);
+  await expect(page.getByRole("heading", { name: "Статус" })).toBeVisible();
+  await expect(page.getByText("Готовится", { exact: true }).first()).toBeVisible();
+  await page.screenshot({ path: join(tmpdir(), "yori-order-preview-mobile.png"), fullPage: false });
+
+  await page.getByRole("link", { name: "Профиль" }).click();
+  await expect(page.getByRole("heading", { name: "Откройте YŌRI в Telegram" })).toBeVisible();
+  await page.screenshot({ path: join(tmpdir(), "yori-profile-mobile.png"), fullPage: false });
+  await page.getByRole("link", { name: /Доставка/ }).click();
+  await expect(page.getByRole("heading", { name: "Доставка без догадок" })).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("новые маршруты не создают горизонтальный скролл", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  for (const route of ["/orders", "/orders/preview", "/profile", "/help", "/delivery", "/privacy"]) {
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: width === 320 ? 800 : 900 });
+      await page.goto(route);
+      const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+      expect(dimensions.scrollWidth, `${route} at ${width}px`).toBeLessThanOrEqual(dimensions.clientWidth);
+      if (route === "/orders/preview" && width === 1440) await page.screenshot({ path: join(tmpdir(), "yori-order-preview-desktop.png"), fullPage: false });
+    }
+  }
+  expect(runtimeErrors).toEqual([]);
+});

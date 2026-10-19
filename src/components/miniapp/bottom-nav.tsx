@@ -5,7 +5,7 @@ import { BookOpen, Home, ReceiptText, ShoppingBag, UserRound } from "lucide-reac
 import { usePathname } from "next/navigation";
 import { useCart } from "@/components/cart/cart-provider";
 
-export function BottomNav({ onUnavailable }: { onUnavailable: () => void }) {
+export function BottomNav() {
   const pathname = usePathname();
   const { itemCount } = useCart();
 
@@ -17,8 +17,8 @@ export function BottomNav({ onUnavailable }: { onUnavailable: () => void }) {
         <span className="cart-nav-icon"><ShoppingBag size={20} aria-hidden="true" />{itemCount > 0 ? <span className="cart-count">{itemCount}</span> : null}</span>
         <span>Корзина</span>
       </Link>
-      <button type="button" className="nav-item" onClick={onUnavailable}><ReceiptText size={20} aria-hidden="true" /><span>Заказы</span></button>
-      <button type="button" className="nav-item" onClick={onUnavailable}><UserRound size={20} aria-hidden="true" /><span>Профиль</span></button>
+      <Link href="/orders" className="nav-item" data-active={pathname.startsWith("/orders")}><ReceiptText size={20} aria-hidden="true" /><span>Заказы</span></Link>
+      <Link href="/profile" className="nav-item" data-active={pathname === "/profile"}><UserRound size={20} aria-hidden="true" /><span>Профиль</span></Link>
     </nav>
   );
 }
