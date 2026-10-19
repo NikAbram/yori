@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+coverage/
+test-results/
+playwright-report/
+yori-stage-one-scaffold/
+*.log
+*.tsbuildinfo
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
