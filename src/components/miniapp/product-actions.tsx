@@ -27,7 +27,7 @@ export function ProductActions({ productId, productName, priceKopeks, available 
   }, [router]);
 
   function addToCart() {
-    addItem(productId, quantity);
+    addItem(productId, quantity, priceKopeks);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DELIVERY_KOPEKS, FREE_DELIVERY_FROM_KOPEKS, deliveryFor, formatMoney } from "./money";
+import { DELIVERY_KOPEKS, FREE_DELIVERY_FROM_KOPEKS, MIN_ORDER_KOPEKS, deliveryFor, formatMoney } from "./money";
 
 describe("money", () => {
   it("formats integer kopeks without floating point arithmetic", () => {
@@ -10,5 +10,10 @@ describe("money", () => {
     expect(deliveryFor(0)).toBe(0);
     expect(deliveryFor(FREE_DELIVERY_FROM_KOPEKS - 1)).toBe(DELIVERY_KOPEKS);
     expect(deliveryFor(FREE_DELIVERY_FROM_KOPEKS)).toBe(0);
+  });
+
+  it("keeps the minimum order as integer kopeks", () => {
+    expect(MIN_ORDER_KOPEKS).toBe(70_000);
+    expect(Number.isInteger(MIN_ORDER_KOPEKS)).toBe(true);
   });
 });

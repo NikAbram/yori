@@ -95,3 +95,52 @@ test("новые маршруты не создают горизонтальны
   }
   expect(runtimeErrors).toEqual([]);
 });
+
+test("checkout проверяет данные локально и честно не создаёт заказ", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/catalog");
+  await page.getByRole("button", { name: "Добавить Темпура с креветкой в корзину" }).click();
+  await page.getByRole("button", { name: "Добавить Темпура с креветкой в корзину" }).click();
+  await page.getByRole("link", { name: /Корзина/ }).click();
+  await page.getByRole("link", { name: "Перейти к оформлению" }).click();
+
+  await expect(page).toHaveURL(/\/checkout$/);
+  await expect(page.getByRole("heading", { name: "Куда привезти заказ" })).toBeVisible();
+  await expect(page.getByText("Приём заказов сейчас закрыт", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Проверить данные" }).click();
+  await expect(page.getByText("Укажите имя получателя")).toBeVisible();
+  await expect(page.getByText("Введите российский номер из 10 цифр")).toBeVisible();
+
+  await page.getByLabel("Имя").fill("Никита");
+  await page.getByLabel("Телефон").fill("8 927 123-45-67");
+  await page.getByLabel("Город").fill("Самара");
+  await page.getByLabel("Улица").fill("Ленинградская");
+  await page.getByLabel("Дом").fill("10");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Проверить данные" }).click();
+
+  await expect(page.getByText("Данные заполнены", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Заказ не создан/)).toBeVisible();
+  await page.screenshot({ path: join(tmpdir(), "yori-checkout-mobile.png"), fullPage: true });
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("checkout не создаёт горизонтальный скролл на целевых ширинах", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  await page.goto("/checkout");
+  await page.evaluate(() => localStorage.setItem("yori-cart-v1", JSON.stringify({
+    version: 2,
+    lines: [{ productId: "p14", quantity: 2, priceKopeksSnapshot: 59900 }],
+  })));
+
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
+    await page.goto("/checkout");
+    await expect(page.getByRole("heading", { name: "Куда привезти заказ" })).toBeVisible();
+    const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+    expect(dimensions.scrollWidth, `checkout at ${width}px`).toBeLessThanOrEqual(dimensions.clientWidth);
+    if (width === 1440) await page.screenshot({ path: join(tmpdir(), "yori-checkout-desktop.png"), fullPage: true });
+  }
+  expect(runtimeErrors).toEqual([]);
+});

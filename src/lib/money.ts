@@ -1,5 +1,6 @@
 export const DELIVERY_KOPEKS = 19_900;
 export const FREE_DELIVERY_FROM_KOPEKS = 180_000;
+export const MIN_ORDER_KOPEKS = 70_000;
 
 export function formatMoney(kopeks: number) {
   return new Intl.NumberFormat("ru-RU", {

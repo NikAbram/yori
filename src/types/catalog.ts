@@ -41,4 +41,5 @@ export type Category = {
 export type CartLine = {
   productId: string;
   quantity: number;
+  priceKopeksSnapshot?: number;
 };
