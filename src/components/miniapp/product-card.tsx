@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
+import { impactTelegram } from "@/lib/telegram-client";
 import { formatMoney } from "@/lib/money";
 import type { Product } from "@/types/catalog";
 
@@ -26,7 +27,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         <p>{product.description}</p>
         <div className="product-meta"><span className="product-price">{formatMoney(product.priceKopeks)}</span><span className="product-size">{productSize(product)}</span></div>
       </div>
-      <button type="button" className="quick-add" disabled={!product.isAvailable} onClick={() => addItem(product.id, 1, product.priceKopeks)} aria-label={`Добавить ${product.name} в корзину`}>
+      <button type="button" className="quick-add" disabled={!product.isAvailable} onClick={() => { addItem(product.id, 1, product.priceKopeks); void impactTelegram(); }} aria-label={`Добавить ${product.name} в корзину`}>
         <Plus size={21} aria-hidden="true" />
       </button>
     </article>

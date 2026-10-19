@@ -10,6 +10,7 @@ import { StatePanel } from "@/components/miniapp/state-panel";
 import { getProductById } from "@/data/products";
 import { checkoutSchema, type CheckoutFormInput, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { MIN_ORDER_KOPEKS, deliveryFor, formatMoney } from "@/lib/money";
+import { notifyTelegram } from "@/lib/telegram-client";
 
 const defaultValues: CheckoutFormInput = {
   recipientName: "",
@@ -48,6 +49,7 @@ export function CheckoutExperience() {
 
   function onValid() {
     setChecked(true);
+    void notifyTelegram("success");
     window.requestAnimationFrame(() => document.getElementById("checkout-checked")?.focus());
   }
 

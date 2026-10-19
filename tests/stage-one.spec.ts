@@ -144,3 +144,63 @@ test("checkout не создаёт горизонтальный скролл н�
   }
   expect(runtimeErrors).toEqual([]);
 });
+
+test("Telegram bridge применяет тему, safe area, Back Button и haptics", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  await page.addInitScript(() => {
+    const telegramWindow = window as typeof window & {
+      __telegramEvents: Array<{ name: string; params?: unknown }>;
+      Telegram?: { WebView?: { receiveEvent?: (name: string, params?: unknown) => void } };
+      TelegramWebviewProxy: { postEvent: (name: string, params?: string) => void };
+    };
+    telegramWindow.__telegramEvents = [];
+    telegramWindow.TelegramWebviewProxy = {
+      postEvent(name, params) {
+        telegramWindow.__telegramEvents.push({ name, params: params ? JSON.parse(params) : undefined });
+        window.setTimeout(() => {
+          const receive = telegramWindow.Telegram?.WebView?.receiveEvent;
+          if (name === "web_app_request_viewport") receive?.("viewport_changed", { height: 844, width: 390, is_expanded: true, is_state_stable: true });
+          if (name === "web_app_request_safe_area") receive?.("safe_area_changed", { top: 12, right: 0, bottom: 24, left: 0 });
+          if (name === "web_app_request_content_safe_area") receive?.("content_safe_area_changed", { top: 8, right: 0, bottom: 4, left: 0 });
+        });
+      },
+    };
+  });
+
+  const themeParams = encodeURIComponent(JSON.stringify({
+    bg_color: "#101820",
+    secondary_bg_color: "#17232d",
+    text_color: "#f6f2e9",
+    hint_color: "#aab4bb",
+    button_color: "#d64a32",
+    button_text_color: "#ffffff",
+    section_separator_color: "#3a4650",
+  }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/?tgWebAppVersion=8.0&tgWebAppPlatform=android&tgWebAppThemeParams=${themeParams}`);
+
+  await expect(page.locator("html")).toHaveAttribute("data-telegram", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-tg-color-scheme", "dark");
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--tg-viewport-safe-area-inset-top").trim())).toBe("12px");
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(16, 24, 32)");
+
+  await page.getByRole("link", { name: /Открыть меню/ }).click();
+  await page.getByRole("button", { name: "Темпура", exact: true }).click();
+  await page.getByRole("link", { name: "Открыть Темпура с креветкой" }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __telegramEvents: Array<{ name: string; params?: { is_visible?: boolean } }> }).__telegramEvents.some((event) => event.name === "web_app_setup_back_button" && event.params?.is_visible === true))).toBe(true);
+  expect(await page.locator(".bottom-nav").evaluate((element) => getComputedStyle(element).bottom)).toBe("30px");
+  await page.screenshot({ path: join(tmpdir(), "yori-telegram-dark-product.png"), fullPage: false });
+
+  await page.getByRole("button", { name: /Добавить/ }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __telegramEvents: Array<{ name: string }> }).__telegramEvents.some((event) => event.name === "web_app_trigger_haptic_feedback"))).toBe(true);
+
+  await page.evaluate(() => (window as typeof window & { Telegram?: { WebView?: { receiveEvent?: (name: string, params?: unknown) => void } } }).Telegram?.WebView?.receiveEvent?.("viewport_changed", { height: 600, width: 390, is_expanded: true, is_state_stable: false }));
+  await expect(page.locator("html")).toHaveAttribute("data-keyboard-open", "");
+  await expect(page.locator(".bottom-nav")).toHaveCSS("pointer-events", "none");
+  await page.evaluate(() => (window as typeof window & { Telegram?: { WebView?: { receiveEvent?: (name: string, params?: unknown) => void } } }).Telegram?.WebView?.receiveEvent?.("viewport_changed", { height: 844, width: 390, is_expanded: true, is_state_stable: true }));
+  await expect(page.locator("html")).not.toHaveAttribute("data-keyboard-open", "");
+
+  await page.evaluate(() => (window as typeof window & { Telegram?: { WebView?: { receiveEvent?: (name: string) => void } } }).Telegram?.WebView?.receiveEvent?.("back_button_pressed"));
+  await expect(page).toHaveURL(/\/catalog/);
+  expect(runtimeErrors).toEqual([]);
+});
