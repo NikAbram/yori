@@ -42,7 +42,7 @@ export function CatalogExperience() {
       </div>
       <p className="catalog-count">Найдено: {visibleProducts.length}</p>
       {visibleProducts.length ? <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard product={product} key={product.id} priority={index < 4} />)}</div> : (
-        <div className="empty-state"><SlidersHorizontal size={30} /><h2>Нет подходящих блюд</h2><p>Сбросьте фильтры или измените запрос — меню снова появится здесь.</p><button type="button" className="primary-button" onClick={resetFilters}>Сбросить фильтры</button></div>
+        <div className="empty-state"><SlidersHorizontal size={30} aria-hidden="true" /><h2>Нет подходящих блюд</h2><p>Сбросьте фильтры или измените запрос — меню снова появится здесь.</p><button type="button" className="primary-button" onClick={resetFilters}>Сбросить фильтры</button></div>
       )}
     </div>
   );

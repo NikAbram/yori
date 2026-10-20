@@ -53,7 +53,7 @@ export function CheckoutExperience() {
     window.requestAnimationFrame(() => document.getElementById("checkout-checked")?.focus());
   }
 
-  if (!hydrated) return <div className="page-width skeleton skeleton-checkout" aria-label="Восстанавливаем корзину" />;
+  if (!hydrated) return <div className="page-width skeleton skeleton-checkout" role="status" aria-live="polite" aria-busy="true"><span className="visually-hidden">Восстанавливаем корзину</span></div>;
   if (!detailedLines.length) return (
     <div className="page-width route-state-wrap">
       <StatePanel icon={ShoppingBag} title="Сначала соберите корзину" description="Добавьте блюда, чтобы проверить адрес, контактные данные и итог будущего заказа." action={{ href: "/catalog", label: "Открыть меню" }} />

@@ -25,11 +25,14 @@ export function ProductCard({ product, priority = false }: { product: Product; p
       <div className="product-copy">
         <h3><Link href={`/product/${product.slug}`}>{product.name}</Link></h3>
         <p>{product.description}</p>
-        <div className="product-meta"><span className="product-price">{formatMoney(product.priceKopeks)}</span><span className="product-size">{productSize(product)}</span></div>
+        <div className="product-meta">
+          <span className="product-price">{formatMoney(product.priceKopeks)}</span>
+          <span className="product-size">{productSize(product)}</span>
+          <button type="button" className="quick-add" disabled={!product.isAvailable} onClick={() => { addItem(product.id, 1, product.priceKopeks); void impactTelegram(); }} aria-label={`Добавить ${product.name} в корзину`}>
+            <Plus size={21} aria-hidden="true" />
+          </button>
+        </div>
       </div>
-      <button type="button" className="quick-add" disabled={!product.isAvailable} onClick={() => { addItem(product.id, 1, product.priceKopeks); void impactTelegram(); }} aria-label={`Добавить ${product.name} в корзину`}>
-        <Plus size={21} aria-hidden="true" />
-      </button>
     </article>
   );
 }

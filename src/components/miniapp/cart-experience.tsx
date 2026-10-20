@@ -17,9 +17,9 @@ export function CartExperience() {
   const delivery = deliveryFor(subtotal);
   const total = subtotal + delivery;
 
-  if (!hydrated) return <div className="page-width skeleton" style={{ minHeight: 450, borderRadius: 24 }} aria-label="Восстанавливаем корзину" />;
+  if (!hydrated) return <div className="page-width skeleton" style={{ minHeight: 450, borderRadius: 24 }} role="status" aria-live="polite" aria-busy="true"><span className="visually-hidden">Восстанавливаем корзину</span></div>;
   if (!detailedLines.length) return (
-    <div className="page-width"><div className="empty-state"><ShoppingBag size={34} /><h1 className="display">Корзина пока пустая</h1><p>Выберите любимые роллы — количество и состав заказа сохранятся в этом браузере.</p><Link href="/catalog" className="primary-button">Открыть меню</Link></div></div>
+    <div className="page-width"><div className="empty-state"><ShoppingBag size={34} aria-hidden="true" /><h1 className="display">Корзина пока пустая</h1><p>Выберите любимые роллы — количество и состав заказа сохранятся в этом браузере.</p><Link href="/catalog" className="primary-button">Открыть меню</Link></div></div>
   );
 
   return (

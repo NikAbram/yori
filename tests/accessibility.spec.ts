@@ -79,23 +79,23 @@ test("все целевые viewport свободны от скролла, пе�
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
+  for (const route of publicRoutes) {
+    await page.goto(route);
+    const controls = page.locator("main a:visible, main button:visible, main input:visible, main select:visible, main textarea:visible");
+    const controlCount = await controls.count();
+    if (controlCount === 0) continue;
+    const lastControl = controls.nth(controlCount - 1);
+    await lastControl.evaluate((element) => {
+      document.documentElement.style.scrollBehavior = "auto";
+      element.scrollIntoView({ block: "end" });
+    });
+    await page.evaluate(() => window.scrollBy(0, 104));
+    const [controlBox, navBox] = await Promise.all([lastControl.boundingBox(), page.locator(".bottom-nav").boundingBox()]);
+    expect(controlBox, `${route}: last control`).not.toBeNull();
+    expect(navBox, `${route}: bottom navigation`).not.toBeNull();
+    expect(controlBox!.y + controlBox!.height, route).toBeLessThanOrEqual(navBox!.y);
+  }
   await page.goto("/checkout");
-  const submit = page.getByRole("button", { name: "Проверить данные" });
-  await submit.scrollIntoViewIfNeeded();
-  const [submitBox, navBox] = await Promise.all([submit.boundingBox(), page.locator(".bottom-nav").boundingBox()]);
-  expect(submitBox).not.toBeNull();
-  expect(navBox).not.toBeNull();
-  expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(navBox!.y);
-  const receiptLink = page.getByRole("link", { name: "Изменить корзину" });
-  await receiptLink.evaluate((element) => {
-    document.documentElement.style.scrollBehavior = "auto";
-    element.scrollIntoView({ block: "end" });
-  });
-  await page.evaluate(() => window.scrollBy(0, 104));
-  const [receiptLinkBox, finalNavBox] = await Promise.all([receiptLink.boundingBox(), page.locator(".bottom-nav").boundingBox()]);
-  expect(receiptLinkBox).not.toBeNull();
-  expect(finalNavBox).not.toBeNull();
-  expect(receiptLinkBox!.y + receiptLinkBox!.height).toBeLessThanOrEqual(finalNavBox!.y);
   await page.screenshot({ path: join(tmpdir(), "yori-stage-2-mobile.png"), fullPage: false });
 
   await page.setViewportSize({ width: 1440, height: 900 });

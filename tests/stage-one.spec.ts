@@ -43,6 +43,28 @@ test("каталог не создаёт горизонтальный скрол
     await page.goto("/catalog");
     const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
     expect(dimensions.scrollWidth, `width ${width}`).toBeLessThanOrEqual(dimensions.clientWidth);
+    const cards = page.locator('[data-testid="product-card"]:visible');
+    for (let index = 0; index < await cards.count(); index += 1) {
+      const overlapsProductSize = await cards.nth(index).evaluate((card) => {
+        const button = card.querySelector(".quick-add")?.getBoundingClientRect();
+        const size = card.querySelector(".product-size")?.getBoundingClientRect();
+        if (!button || !size) return false;
+        return button.left < size.right && button.right > size.left && button.top < size.bottom && button.bottom > size.top;
+      });
+      expect(overlapsProductSize, `card ${index + 1} at ${width}px`).toBe(false);
+    }
+    const geometry = await cards.evaluateAll((items) => items.map((card) => {
+      const cardBox = card.getBoundingClientRect();
+      const buttonBox = card.querySelector(".quick-add")?.getBoundingClientRect();
+      return { top: cardBox.top, height: cardBox.height, buttonTop: buttonBox?.top ?? 0 };
+    }));
+    const firstRow = geometry.filter((item) => Math.abs(item.top - geometry[0].top) < 1);
+    if (firstRow.length > 1) {
+      const heights = firstRow.map((item) => item.height);
+      const buttonTops = firstRow.map((item) => item.buttonTop);
+      expect(Math.max(...heights) - Math.min(...heights), `card heights at ${width}px`).toBeLessThanOrEqual(1);
+      expect(Math.max(...buttonTops) - Math.min(...buttonTops), `button alignment at ${width}px`).toBeLessThanOrEqual(1);
+    }
     if (width === 1440) await page.screenshot({ path: join(tmpdir(), "yori-catalog-desktop.png"), fullPage: false });
   }
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });

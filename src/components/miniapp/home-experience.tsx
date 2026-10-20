@@ -53,7 +53,7 @@ export function HomeExperience() {
           <div className="section" style={{ paddingBottom: 0 }}>
             <div className="section-head"><h2 className="section-title display">Результаты</h2><span className="muted">{results.length}</span></div>
             {results.length ? <div className="product-grid">{results.map((product, index) => <ProductCard key={product.id} product={product} priority={index < 2} />)}</div> : (
-              <div className="empty-state"><Search size={28} /><h2>Ничего не нашли</h2><p>Попробуйте другое название или откройте весь каталог.</p><Link href="/catalog" className="primary-button">Открыть каталог</Link></div>
+              <div className="empty-state"><Search size={28} aria-hidden="true" /><h2>Ничего не нашли</h2><p>Попробуйте другое название или откройте весь каталог.</p><Link href="/catalog" className="primary-button">Открыть каталог</Link></div>
             )}
           </div>
         ) : null}
