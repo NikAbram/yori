@@ -22,7 +22,7 @@ test("главный путь: поиск, каталог, товар, корз�
   await page.getByRole("link", { name: "Каталог" }).click();
   await page.getByRole("button", { name: "Темпура", exact: true }).click();
   await expect(page.locator('[data-testid="product-card"]:visible')).toHaveCount(2);
-  await page.getByRole("link", { name: "Открыть Темпура с креветкой" }).click();
+  await page.locator('.product-image-link[href="/product/shrimp-tempura"]:visible').first().click();
   await page.getByRole("button", { name: "Увеличить количество" }).click();
   await page.getByRole("button", { name: /Добавить/ }).click();
   await expect(page.getByText("Темпура с креветкой добавлен в корзину")).toBeVisible();
@@ -145,6 +145,37 @@ test("checkout не создаёт горизонтальный скролл н�
   expect(runtimeErrors).toEqual([]);
 });
 
+test("browser fallback убирает нижнюю навигацию при экранной клавиатуре", async ({ page }) => {
+  const runtimeErrors = watchRuntimeErrors(page);
+  await page.addInitScript(() => {
+    let visibleHeight = 844;
+    const viewport = new EventTarget();
+    Object.defineProperty(viewport, "height", { get: () => visibleHeight });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 844 });
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+    (window as typeof window & { __setVisibleHeight: (height: number) => void }).__setVisibleHeight = (height) => {
+      visibleHeight = height;
+      viewport.dispatchEvent(new Event("resize"));
+    };
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/checkout");
+  await expect(page.locator("html")).not.toHaveAttribute("data-telegram", "true");
+
+  await page.evaluate(() => {
+    (window as typeof window & { __setVisibleHeight: (height: number) => void }).__setVisibleHeight(600);
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-keyboard-open", "");
+  await expect(page.locator(".bottom-nav")).toHaveCSS("pointer-events", "none");
+
+  await page.evaluate(() => {
+    (window as typeof window & { __setVisibleHeight: (height: number) => void }).__setVisibleHeight(844);
+  });
+  await expect(page.locator("html")).not.toHaveAttribute("data-keyboard-open", "");
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("Telegram bridge применяет тему, safe area, Back Button и haptics", async ({ page }) => {
   const runtimeErrors = watchRuntimeErrors(page);
   await page.addInitScript(() => {
@@ -186,7 +217,7 @@ test("Telegram bridge применяет тему, safe area, Back Button и hap
 
   await page.getByRole("link", { name: /Открыть меню/ }).click();
   await page.getByRole("button", { name: "Темпура", exact: true }).click();
-  await page.getByRole("link", { name: "Открыть Темпура с креветкой" }).click();
+  await page.locator('.product-image-link[href="/product/shrimp-tempura"]:visible').first().click();
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __telegramEvents: Array<{ name: string; params?: { is_visible?: boolean } }> }).__telegramEvents.some((event) => event.name === "web_app_setup_back_button" && event.params?.is_visible === true))).toBe(true);
   expect(await page.locator(".bottom-nav").evaluate((element) => getComputedStyle(element).bottom)).toBe("30px");
   await page.screenshot({ path: join(tmpdir(), "yori-telegram-dark-product.png"), fullPage: false });

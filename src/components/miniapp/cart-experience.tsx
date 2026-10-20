@@ -30,7 +30,7 @@ export function CartExperience() {
         <div className="cart-list">
           {detailedLines.map(({ product, quantity }) => (
             <article className="cart-line" key={product.id}>
-              <Link href={`/product/${product.slug}`} className="cart-thumb"><Image src={product.image} alt="" fill sizes="112px" /></Link>
+              <Link href={`/product/${product.slug}`} className="cart-thumb" aria-label={`Открыть ${product.name}`}><Image src={product.image} alt="" fill sizes="112px" /></Link>
               <div><h2><Link href={`/product/${product.slug}`}>{product.name}</Link></h2><p>{formatMoney(product.priceKopeks)} · {product.weightGrams ? `${product.weightGrams} г` : `${product.volumeMl} мл`}</p><button type="button" className="remove-button" onClick={() => removeItem(product.id)}>Удалить</button></div>
               <div><strong>{formatMoney(product.priceKopeks * quantity)}</strong><div className="quantity" style={{ marginTop: 10 }}><button type="button" onClick={() => setQuantity(product.id, quantity - 1)} aria-label={`Уменьшить количество ${product.name}`}><Minus size={17} /></button><output>{quantity}</output><button type="button" onClick={() => setQuantity(product.id, quantity + 1)} aria-label={`Увеличить количество ${product.name}`}><Plus size={17} /></button></div></div>
             </article>

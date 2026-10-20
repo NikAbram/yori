@@ -28,7 +28,7 @@ export default async function ProductPage({ params }: PageProps) {
       <div className="product-hero-image"><Image src={product.image} alt={product.imageAlt} fill preload sizes="(max-width: 900px) 100vw, 55vw" /></div>
       <div className="product-details">
         <Link href="/catalog" className="text-button"><ArrowLeft size={17} aria-hidden="true" /> Назад</Link>
-        <p className="hero-kicker" style={{ color: "var(--tomato)", marginTop: 30 }}>{getCategoryName(product.category)}</p>
+        <p className="hero-kicker product-kicker">{getCategoryName(product.category)}</p>
         <h1 className="display">{product.name}</h1>
         <p className="lead">{product.description}</p>
         <ul className="fact-list">

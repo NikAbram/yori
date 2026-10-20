@@ -8,10 +8,10 @@ export default defineConfig({
   workers: 1,
   reporter: "line",
   outputDir: join(tmpdir(), "yori-playwright-results"),
-  use: { baseURL: "http://127.0.0.1:3107", trace: "retain-on-failure" },
+  use: { baseURL: "http://127.0.0.1:3207", trace: "retain-on-failure" },
   webServer: {
-    command: "npm run start -- --hostname 127.0.0.1 --port 3107",
-    url: "http://127.0.0.1:3107",
+    command: "npm run start -- --hostname 127.0.0.1 --port 3207",
+    url: "http://127.0.0.1:3207",
     reuseExistingServer: true,
     timeout: 120_000,
   },

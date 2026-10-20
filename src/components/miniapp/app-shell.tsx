@@ -6,13 +6,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-frame">
       <TelegramBridge />
+      <a href="#main-content" className="skip-link">К основному содержанию</a>
       <header className="page-width topbar">
         <Link href="/" className="brand-mark" aria-label="YŌRI — главная">
           YŌRI <span className="brand-dot" aria-hidden="true" />
         </Link>
         <span className="closed-pill">Приём заказов сейчас закрыт</span>
       </header>
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>{children}</main>
       <BottomNav />
     </div>
   );

@@ -12,33 +12,50 @@ export function TelegramBridge() {
 
   useEffect(() => {
     let active = true;
+    let telegramViewportMounted = false;
     const cleanups: VoidFunction[] = [];
     const root = document.documentElement;
+    const visualViewport = window.visualViewport;
+
+    const registerCleanup = (cleanup: VoidFunction) => {
+      if (active) cleanups.push(cleanup);
+      else cleanup();
+    };
+
+    const syncBrowserKeyboard = () => {
+      if (telegramViewportMounted) return;
+      const visibleHeight = visualViewport?.height ?? window.innerHeight;
+      root.toggleAttribute("data-keyboard-open", window.innerHeight - visibleHeight > KEYBOARD_THRESHOLD_PX);
+    };
+
+    visualViewport?.addEventListener("resize", syncBrowserKeyboard, { passive: true });
+    registerCleanup(() => visualViewport?.removeEventListener("resize", syncBrowserKeyboard));
+    syncBrowserKeyboard();
 
     async function connect() {
       const sdk = await import("@tma.js/sdk");
       if (!active || !sdk.isTMA()) return;
 
       const cleanupSdk = sdk.init({ acceptCustomStyles: false });
-      cleanups.push(cleanupSdk);
+      registerCleanup(cleanupSdk);
       if (!active) return;
 
       root.dataset.telegram = "true";
 
       if (sdk.themeParams.mount.isAvailable()) {
         sdk.themeParams.mount();
-        cleanups.push(sdk.themeParams.unmount);
+        registerCleanup(sdk.themeParams.unmount);
         const unbindTheme = sdk.themeParams.bindCssVars.ifAvailable();
-        if (unbindTheme.ok) cleanups.push(unbindTheme.data);
+        if (unbindTheme.ok) registerCleanup(unbindTheme.data);
 
         const syncScheme = () => { root.dataset.tgColorScheme = sdk.themeParams.isDark() ? "dark" : "light"; };
         syncScheme();
-        cleanups.push(sdk.themeParams.isDark.sub(syncScheme));
+        registerCleanup(sdk.themeParams.isDark.sub(syncScheme));
       }
 
       if (sdk.miniApp.mount.isAvailable()) {
         sdk.miniApp.mount();
-        cleanups.push(sdk.miniApp.unmount);
+        registerCleanup(sdk.miniApp.unmount);
         sdk.miniApp.setBgColor.ifAvailable("bg_color");
         sdk.miniApp.setHeaderColor.ifAvailable("bg_color");
         sdk.miniApp.setBottomBarColor.ifAvailable("secondary_bg_color");
@@ -47,23 +64,17 @@ export function TelegramBridge() {
 
       if (sdk.backButton.mount.isAvailable()) {
         sdk.backButton.mount();
-        cleanups.push(sdk.backButton.unmount);
+        registerCleanup(sdk.backButton.unmount);
       }
-
-      const visualViewport = window.visualViewport;
-      const syncBrowserKeyboard = () => {
-        const visibleHeight = visualViewport?.height ?? window.innerHeight;
-        root.toggleAttribute("data-keyboard-open", window.innerHeight - visibleHeight > KEYBOARD_THRESHOLD_PX);
-      };
-      visualViewport?.addEventListener("resize", syncBrowserKeyboard, { passive: true });
-      cleanups.push(() => visualViewport?.removeEventListener("resize", syncBrowserKeyboard));
 
       if (sdk.viewport.mount.isAvailable()) {
         try {
           await sdk.viewport.mount();
           if (!active) return;
+          telegramViewportMounted = true;
+          registerCleanup(() => { telegramViewportMounted = false; });
           const unbindViewport = sdk.viewport.bindCssVars.ifAvailable();
-          if (unbindViewport.ok) cleanups.push(unbindViewport.data);
+          if (unbindViewport.ok) registerCleanup(unbindViewport.data);
           sdk.viewport.expand.ifAvailable();
 
           const syncTelegramKeyboard = () => {
@@ -71,8 +82,8 @@ export function TelegramBridge() {
             root.toggleAttribute("data-keyboard-open", keyboardOpen);
           };
           syncTelegramKeyboard();
-          cleanups.push(sdk.viewport.height.sub(syncTelegramKeyboard));
-          cleanups.push(sdk.viewport.stableHeight.sub(syncTelegramKeyboard));
+          registerCleanup(sdk.viewport.height.sub(syncTelegramKeyboard));
+          registerCleanup(sdk.viewport.stableHeight.sub(syncTelegramKeyboard));
         } catch {
           syncBrowserKeyboard();
         }

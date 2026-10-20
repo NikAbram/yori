@@ -17,7 +17,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const { addItem } = useCart();
   return (
     <article className="product-card" data-testid="product-card">
-      <Link href={`/product/${product.slug}`} className="product-image-link" aria-label={`Открыть ${product.name}`}>
+      <Link href={`/product/${product.slug}`} className="product-image-link">
         {product.badge ? <span className="product-badge">{product.badge}</span> : null}
         <Image src={product.image} alt={product.imageAlt} fill sizes="(max-width: 620px) 50vw, (max-width: 900px) 50vw, 25vw" preload={priority} />
         {!product.isAvailable ? <span className="product-unavailable">Временно нет</span> : null}
