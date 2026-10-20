@@ -12,3 +12,4 @@ yori-stage-one-scaffold/
 .env.local
 .env.*.local
 !.env.example
+src/generated/prisma/

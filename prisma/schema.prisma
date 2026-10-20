@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdminRole {
+  OWNER
+  MANAGER
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  COOKING
+  COURIER
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH_ON_DELIVERY
+  CARD_ON_DELIVERY
+}
+
+enum StatusActorType {
+  SYSTEM
+  TELEGRAM_USER
+  ADMIN
+}
+
+enum NotificationRecipientType {
+  CUSTOMER
+  MANAGER
+}
+
+enum NotificationEventType {
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_STATUS_CHANGED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model TelegramUser {
+  id               String               @id @default(uuid()) @db.Uuid
+  telegramId       String               @unique @db.VarChar(32)
+  firstName        String               @db.VarChar(128)
+  lastName         String?              @db.VarChar(128)
+  username         String?              @db.VarChar(64)
+  languageCode     String?              @db.VarChar(16)
+  phone            String?              @db.VarChar(32)
+  allowPrivateTest Boolean              @default(false)
+  isBlocked        Boolean              @default(false)
+  lastSeenAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  addresses        CustomerAddress[]
+  orders           Order[]
+  sessions         TelegramSession[]
+  statusChanges    OrderStatusHistory[]
+
+  @@index([allowPrivateTest, isBlocked])
+}
+
+model TelegramSession {
+  id        String       @id @default(uuid()) @db.Uuid
+  tokenHash String       @unique @db.VarChar(128)
+  userId    String       @db.Uuid
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime     @default(now())
+  user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model CustomerAddress {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  label     String       @db.VarChar(64)
+  city      String       @db.VarChar(128)
+  street    String       @db.VarChar(160)
+  house     String       @db.VarChar(32)
+  apartment String?      @db.VarChar(32)
+  entrance  String?      @db.VarChar(32)
+  floor     String?      @db.VarChar(16)
+  comment   String?      @db.VarChar(500)
+  isDefault Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isDefault])
+}
+
+model AdminUser {
+  id            String               @id @default(uuid()) @db.Uuid
+  email         String               @unique @db.VarChar(320)
+  passwordHash  String               @db.VarChar(255)
+  role          AdminRole            @default(MANAGER)
+  isActive      Boolean              @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  statusChanges OrderStatusHistory[]
+  settingsEdits SiteSettings[]
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(128)
+  shortName   String    @db.VarChar(64)
+  eyebrow     String?   @db.VarChar(128)
+  slug        String    @unique @db.VarChar(96)
+  sortOrder   Int       @default(0)
+  isPublished Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@index([isPublished, sortOrder])
+}
+
+model Product {
+  id            String      @id @default(uuid()) @db.Uuid
+  categoryId    String      @db.Uuid
+  name          String      @db.VarChar(160)
+  slug          String      @unique @db.VarChar(128)
+  description   String
+  ingredients   String[]
+  allergens     String[]
+  imagePath     String      @db.VarChar(255)
+  imageAlt      String      @db.VarChar(255)
+  weightGrams   Int?
+  volumeMl      Int?
+  piecesCount   Int?
+  priceKopeks   Int
+  badge         String?     @db.VarChar(64)
+  isAvailable   Boolean     @default(true)
+  isPublished   Boolean     @default(true)
+  isFeatured    Boolean     @default(false)
+  isRecommended Boolean     @default(false)
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems    OrderItem[]
+
+  @@index([categoryId, sortOrder])
+  @@index([isPublished, isAvailable, sortOrder])
+  @@index([isFeatured, isPublished, sortOrder])
+  @@index([isRecommended, isPublished, sortOrder])
+}
+
+model Order {
+  id                String               @id @default(uuid()) @db.Uuid
+  orderNo           String               @unique @db.VarChar(32)
+  userId            String               @db.Uuid
+  recipientName     String               @db.VarChar(160)
+  phone             String               @db.VarChar(32)
+  city              String               @db.VarChar(128)
+  street            String               @db.VarChar(160)
+  house             String               @db.VarChar(32)
+  apartment         String?              @db.VarChar(32)
+  entrance          String?              @db.VarChar(32)
+  floor             String?              @db.VarChar(16)
+  customerNote      String?              @db.VarChar(1000)
+  subtotalKopeks    Int
+  deliveryKopeks    Int
+  discountKopeks    Int                  @default(0)
+  totalKopeks       Int
+  paymentMethod     PaymentMethod
+  status            OrderStatus          @default(NEW)
+  isTest            Boolean              @default(true)
+  idempotencyKey    String               @unique @db.VarChar(128)
+  consentAcceptedAt DateTime
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  user              TelegramUser         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items             OrderItem[]
+  statusHistory     OrderStatusHistory[]
+  notifications     NotificationLog[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([isTest, createdAt])
+}
+
+model OrderItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orderId             String   @db.Uuid
+  productId           String?  @db.Uuid
+  productNameSnapshot String   @db.VarChar(160)
+  unitPriceKopeks     Int
+  quantity            Int
+  lineTotalKopeks     Int
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product             Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id             String          @id @default(uuid()) @db.Uuid
+  orderId        String          @db.Uuid
+  fromStatus     OrderStatus?
+  toStatus       OrderStatus
+  actorType      StatusActorType
+  adminUserId    String?         @db.Uuid
+  telegramUserId String?         @db.Uuid
+  note           String?         @db.VarChar(500)
+  createdAt      DateTime        @default(now())
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser      AdminUser?      @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  telegramUser   TelegramUser?   @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([telegramUserId, createdAt])
+}
+
+model ProcessedTelegramUpdate {
+  updateId  BigInt   @id
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model NotificationLog {
+  id             String                    @id @default(uuid()) @db.Uuid
+  orderId        String?                   @db.Uuid
+  recipientType  NotificationRecipientType
+  telegramChatId String                    @db.VarChar(32)
+  eventType      NotificationEventType
+  status         NotificationStatus        @default(PENDING)
+  attemptCount   Int                       @default(0)
+  errorText      String?                   @db.VarChar(500)
+  lastAttemptAt  DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  order          Order?                    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@index([status, createdAt])
+}
+
+model SiteSettings {
+  id                         String     @id @default("default") @db.VarChar(32)
+  isOrderingEnabled          Boolean    @default(false)
+  deliveryKopeks             Int        @default(19900)
+  freeDeliveryFromKopeks     Int?       @default(180000)
+  minimumOrderKopeks         Int        @default(70000)
+  contactText                String?
+  deliveryTerms              String?
+  privacyText                String?
+  operatorName               String?    @db.VarChar(160)
+  commercialHostingConfirmed Boolean    @default(false)
+  liveReadyAt                DateTime?
+  updatedByAdminId           String?    @db.Uuid
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+  updatedByAdmin             AdminUser? @relation(fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+}
+
+model RateLimitBucket {
+  id          String   @id @default(uuid()) @db.Uuid
+  action      String   @db.VarChar(64)
+  subjectHash String   @db.VarChar(128)
+  windowStart DateTime
+  count       Int      @default(1)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([action, subjectHash, windowStart])
+  @@index([expiresAt])
+}
