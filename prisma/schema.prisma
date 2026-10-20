@@ -261,6 +261,8 @@ model SiteSettings {
   deliveryKopeks             Int        @default(19900)
   freeDeliveryFromKopeks     Int?       @default(180000)
   minimumOrderKopeks         Int        @default(70000)
+  cashOnDeliveryEnabled      Boolean    @default(false)
+  cardOnDeliveryEnabled      Boolean    @default(false)
   contactText                String?
   deliveryTerms              String?
   privacyText                String?

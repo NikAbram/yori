@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   verifyTelegramInitData: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({ set: mocks.cookieSet }),
 }));

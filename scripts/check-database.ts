@@ -70,11 +70,21 @@ function describeError(error: unknown) {
 }
 
 async function checkDatabase() {
-  const [categoryCount, productCount, settingsCount, migrationRows] =
+  const [categoryCount, productCount, settings, migrationRows] =
     await Promise.all([
       prisma.category.count(),
       prisma.product.count(),
-      prisma.siteSettings.count(),
+      prisma.siteSettings.findUnique({
+        where: { id: "default" },
+        select: {
+          isOrderingEnabled: true,
+          cashOnDeliveryEnabled: true,
+          cardOnDeliveryEnabled: true,
+          minimumOrderKopeks: true,
+          deliveryKopeks: true,
+          freeDeliveryFromKopeks: true,
+        },
+      }),
       prisma.$queryRaw<Array<{ migration_name: string }>>`
         SELECT migration_name
         FROM "_prisma_migrations"
@@ -92,7 +102,7 @@ async function checkDatabase() {
     categoryCount,
     productCount,
     transactionProductCount,
-    settingsCount,
+    settings,
     appliedMigrations: migrationRows.map(({ migration_name }) => migration_name),
   });
 }

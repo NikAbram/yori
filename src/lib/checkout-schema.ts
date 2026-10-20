@@ -24,5 +24,44 @@ export const checkoutSchema = z.object({
   consent: z.boolean().refine(Boolean, "Подтвердите согласие на обработку данных"),
 });
 
+export const MAX_CART_LINES = 20;
+export const MAX_CART_LINE_QUANTITY = 20;
+export const MAX_CART_TOTAL_QUANTITY = 50;
+
+const orderCartLineSchema = z.object({
+  productId: z.uuid(),
+  quantity: z.number().int().min(1).max(MAX_CART_LINE_QUANTITY),
+}).strict();
+
+export const createOrderRequestSchema = checkoutSchema.extend({
+  items: z.array(orderCartLineSchema).min(1).max(MAX_CART_LINES),
+  paymentMethod: z.enum(["CASH_ON_DELIVERY", "CARD_ON_DELIVERY"]),
+  idempotencyKey: z.uuid(),
+}).strict().superRefine((value, context) => {
+  const productIds = new Set<string>();
+  let totalQuantity = 0;
+
+  for (const [index, item] of value.items.entries()) {
+    if (productIds.has(item.productId)) {
+      context.addIssue({
+        code: "custom",
+        path: ["items", index, "productId"],
+        message: "Каждый товар должен встречаться в корзине один раз",
+      });
+    }
+    productIds.add(item.productId);
+    totalQuantity += item.quantity;
+  }
+
+  if (totalQuantity > MAX_CART_TOTAL_QUANTITY) {
+    context.addIssue({
+      code: "custom",
+      path: ["items"],
+      message: `В заказе может быть не более ${MAX_CART_TOTAL_QUANTITY} товаров`,
+    });
+  }
+});
+
 export type CheckoutFormInput = z.input<typeof checkoutSchema>;
 export type CheckoutFormValues = z.output<typeof checkoutSchema>;
+export type CreateOrderRequest = z.output<typeof createOrderRequestSchema>;
