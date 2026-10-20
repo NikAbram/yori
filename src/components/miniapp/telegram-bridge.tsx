@@ -62,6 +62,19 @@ export function TelegramBridge() {
         sdk.miniApp.ready.ifAvailable();
       }
 
+      const initData = sdk.retrieveRawInitData();
+      if (initData) {
+        void fetch("/api/auth/telegram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData }),
+          credentials: "same-origin",
+          cache: "no-store",
+        }).catch(() => {
+          // Authentication is required only for private flows; public browsing remains available.
+        });
+      }
+
       if (sdk.backButton.mount.isAvailable()) {
         sdk.backButton.mount();
         registerCleanup(sdk.backButton.unmount);
