@@ -1,14 +1,6 @@
-export type CategorySlug =
-  | "sets"
-  | "classic"
-  | "maki"
-  | "baked"
-  | "tempura"
-  | "sushi"
-  | "soups-snacks"
-  | "drinks";
+export type CategorySlug = string;
 
-export type ProductBadge = "Хит" | "Новинка";
+export type ProductBadge = string;
 
 export type Product = {
   id: string;
@@ -36,6 +28,11 @@ export type Category = {
   name: string;
   shortName: string;
   eyebrow: string;
+};
+
+export type PublicCatalog = {
+  categories: Category[];
+  products: Product[];
 };
 
 export type CartLine = {

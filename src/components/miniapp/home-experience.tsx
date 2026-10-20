@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Search, X } from "lucide-react";
 import { useState } from "react";
-import { categories, products } from "@/data/products";
 import { ProductCard } from "@/components/miniapp/product-card";
+import type { PublicCatalog } from "@/types/catalog";
 
-export function HomeExperience() {
+export function HomeExperience({ categories, products }: PublicCatalog) {
   const [query, setQuery] = useState("");
   const normalized = query.trim().toLocaleLowerCase("ru");
   const results = normalized ? products.filter((product) => product.name.toLocaleLowerCase("ru").includes(normalized)).slice(0, 4) : [];

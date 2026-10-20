@@ -3,9 +3,8 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { categories, products } from "@/data/products";
 import { ProductCard } from "@/components/miniapp/product-card";
-import type { CategorySlug, Product } from "@/types/catalog";
+import type { CategorySlug, Product, PublicCatalog } from "@/types/catalog";
 
 type SortOrder = "manual" | "price-asc" | "price-desc";
 
@@ -15,7 +14,7 @@ function sortProducts(items: Product[], order: SortOrder) {
   return items.toSorted((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export function CatalogExperience() {
+export function CatalogExperience({ categories, products }: PublicCatalog) {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category");
   const [category, setCategory] = useState<CategorySlug | "all">(categories.some((item) => item.slug === initialCategory) ? initialCategory as CategorySlug : "all");
@@ -26,13 +25,13 @@ export function CatalogExperience() {
     const matchesCategory = category === "all" || product.category === category;
     const matchesQuery = !deferredQuery || `${product.name} ${product.description}`.toLocaleLowerCase("ru").includes(deferredQuery);
     return matchesCategory && matchesQuery;
-  }), sort), [category, deferredQuery, sort]);
+  }), sort), [category, deferredQuery, products, sort]);
 
   function resetFilters() { setCategory("all"); setQuery(""); setSort("manual"); }
 
   return (
     <div className="page-width">
-      <div className="section-head" style={{ marginTop: 24 }}><h1 className="section-title display">Меню</h1><span className="muted">25 позиций</span></div>
+      <div className="section-head" style={{ marginTop: 24 }}><h1 className="section-title display">Меню</h1><span className="muted">{products.length} позиций</span></div>
       <div className="catalog-toolbar">
         <div className="catalog-controls">
           <div className="search-wrap"><Search size={20} aria-hidden="true" /><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по меню" aria-label="Поиск по меню" />{query ? <button className="search-clear" type="button" onClick={() => setQuery("")} aria-label="Очистить поиск"><X size={19} /></button> : null}</div>

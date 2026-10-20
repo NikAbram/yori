@@ -14,10 +14,8 @@ function watchRuntimeErrors(page: Page) {
 }
 
 async function seedCart(page: Page) {
-  await page.evaluate(() => localStorage.setItem("yori-cart-v1", JSON.stringify({
-    version: 2,
-    lines: [{ productId: "p14", quantity: 2, priceKopeksSnapshot: 59900 }],
-  })));
+  await page.goto("/catalog");
+  await page.getByRole("button", { name: "Добавить Темпура с креветкой в корзину" }).click();
 }
 
 test("основные маршруты проходят автоматическую WCAG-проверку", async ({ page }) => {

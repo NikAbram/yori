@@ -150,11 +150,8 @@ test("checkout проверяет данные локально и честно 
 
 test("checkout не создаёт горизонтальный скролл на целевых ширинах", async ({ page }) => {
   const runtimeErrors = watchRuntimeErrors(page);
-  await page.goto("/checkout");
-  await page.evaluate(() => localStorage.setItem("yori-cart-v1", JSON.stringify({
-    version: 2,
-    lines: [{ productId: "p14", quantity: 2, priceKopeksSnapshot: 59900 }],
-  })));
+  await page.goto("/catalog");
+  await page.getByRole("button", { name: "Добавить Темпура с креветкой в корзину" }).click();
 
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });

@@ -3,14 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useMemo } from "react";
 import { useCart } from "@/components/cart/cart-provider";
-import { getProductById } from "@/data/products";
 import { deliveryFor, formatMoney } from "@/lib/money";
+import type { Product } from "@/types/catalog";
 
-export function CartExperience() {
+export function CartExperience({ products }: { products: Product[] }) {
   const { lines, hydrated, setQuantity, removeItem, clear } = useCart();
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
   const detailedLines = lines.flatMap((line) => {
-    const product = getProductById(line.productId);
+    const product = productsById.get(line.productId);
     return product ? [{ ...line, product }] : [];
   });
   const subtotal = detailedLines.reduce((sum, line) => sum + line.product.priceKopeks * line.quantity, 0);

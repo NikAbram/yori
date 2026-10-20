@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Check, Clock3, CreditCard, LockKeyhole, ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useCart } from "@/components/cart/cart-provider";
 import { StatePanel } from "@/components/miniapp/state-panel";
-import { getProductById } from "@/data/products";
 import { checkoutSchema, type CheckoutFormInput, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { MIN_ORDER_KOPEKS, deliveryFor, formatMoney } from "@/lib/money";
 import { notifyTelegram } from "@/lib/telegram-client";
+import type { Product } from "@/types/catalog";
 
 const defaultValues: CheckoutFormInput = {
   recipientName: "",
@@ -25,9 +25,13 @@ const defaultValues: CheckoutFormInput = {
   consent: false,
 };
 
-export function CheckoutExperience() {
+export function CheckoutExperience({ products }: { products: Product[] }) {
   const { lines, hydrated } = useCart();
   const [checked, setChecked] = useState(false);
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
   const { register, handleSubmit, formState: { errors } } = useForm<CheckoutFormInput, unknown, CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
     defaultValues,
@@ -35,7 +39,7 @@ export function CheckoutExperience() {
   });
 
   const detailedLines = lines.flatMap((line) => {
-    const product = getProductById(line.productId);
+    const product = productsById.get(line.productId);
     return product ? [{ ...line, product }] : [];
   });
   const missingCount = lines.length - detailedLines.length;
