@@ -68,6 +68,26 @@ describe("cart pricing", () => {
     }));
   });
 
+  it("rejects negative, fractional and overflowing kopek values", () => {
+    expect(() => calculateCartPricing(
+      [{ productId: firstId, quantity: 1 }],
+      [{ id: firstId, name: "Ролл", priceKopeks: 64_900, isAvailable: true }],
+      { ...settings, deliveryKopeks: -1 },
+    )).toThrowError(expect.objectContaining({ code: "INVALID_PRICING_CONFIGURATION" }));
+
+    expect(() => calculateCartPricing(
+      [{ productId: firstId, quantity: 1 }],
+      [{ id: firstId, name: "Ролл", priceKopeks: 64_900.5, isAvailable: true }],
+      { ...settings, minimumOrderKopeks: 0 },
+    )).toThrowError(expect.objectContaining({ code: "ITEM_UNAVAILABLE" }));
+
+    expect(() => calculateCartPricing(
+      [{ productId: firstId, quantity: 20 }],
+      [{ id: firstId, name: "Ролл", priceKopeks: Number.MAX_SAFE_INTEGER, isAvailable: true }],
+      { ...settings, minimumOrderKopeks: 0 },
+    )).toThrowError(expect.objectContaining({ code: "INVALID_PRICING_CONFIGURATION" }));
+  });
+
   it("reads products and settings together immediately before pricing", async () => {
     const transaction = {
       product: { findMany: vi.fn().mockResolvedValue([

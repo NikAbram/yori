@@ -22,6 +22,7 @@ vi.mock("@/services/cart-pricing", async (importOriginal) => {
   return { ...original, priceCartFromDatabase: mocks.priceCart };
 });
 
+import { CartPricingError } from "@/services/cart-pricing";
 import { createOrder, OrderingError } from "@/services/ordering";
 
 const input = {
@@ -112,6 +113,39 @@ describe("ordering service", () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
+  it("recovers the winning order when concurrent requests collide on the idempotency key", async () => {
+    mocks.orderFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ userId: "user-id", ...order });
+    mocks.transaction.mockRejectedValue({ code: "P2002" });
+
+    await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({
+      created: false,
+      order,
+    });
+    expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(mocks.orderFindUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a serializable transaction conflict and creates only once", async () => {
+    const transaction = {
+      order: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(order),
+      },
+    };
+    mocks.transaction
+      .mockRejectedValueOnce({ code: "P2034" })
+      .mockImplementationOnce((callback) => callback(transaction));
+
+    await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({
+      created: true,
+      order,
+    });
+    expect(mocks.transaction).toHaveBeenCalledTimes(2);
+    expect(transaction.order.create).toHaveBeenCalledTimes(1);
+  });
+
   it("does not reveal or reuse another user's idempotency key", async () => {
     mocks.orderFindUnique.mockResolvedValue({ userId: "another-user", ...order });
 
@@ -132,6 +166,17 @@ describe("ordering service", () => {
     await expect(createOrder("user-id", input, { isTest: true })).rejects.toThrowError(
       expect.objectContaining({ code: "PAYMENT_METHOD_UNAVAILABLE" }),
     );
+    expect(transaction.order.create).not.toHaveBeenCalled();
+  });
+
+  it("does not write an order when current catalog pricing fails", async () => {
+    const transaction = {
+      order: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    };
+    mocks.transaction.mockImplementation((callback) => callback(transaction));
+    mocks.priceCart.mockRejectedValue(new CartPricingError("ITEM_UNAVAILABLE"));
+
+    await expect(createOrder("user-id", input, { isTest: true })).rejects.toThrow("ITEM_UNAVAILABLE");
     expect(transaction.order.create).not.toHaveBeenCalled();
   });
 

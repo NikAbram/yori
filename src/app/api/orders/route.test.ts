@@ -89,6 +89,15 @@ describe("order route", () => {
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
+  it("does not expose the order list without a verified Telegram session", async () => {
+    mocks.getSession.mockResolvedValue(null);
+
+    const response = await GET();
+
+    expect(response.status).toBe(401);
+    expect(mocks.listOrders).not.toHaveBeenCalled();
+  });
+
   it("returns only the authenticated user's private order list", async () => {
     mocks.listOrders.mockResolvedValue([{ id: "order-id", orderNo: "YR-123" }]);
 
@@ -97,6 +106,15 @@ describe("order route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store, private");
     expect(mocks.listOrders).toHaveBeenCalledWith("user-id");
+  });
+
+  it("sanitizes order-list storage failures", async () => {
+    mocks.listOrders.mockRejectedValue(new Error("database host details"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("database host details");
   });
 
   it("fails closed for a user not enabled for private testing", async () => {
@@ -138,6 +156,33 @@ describe("order route", () => {
   it("rejects cross-origin and client-supplied price fields", async () => {
     expect((await POST(orderRequest(requestBody, "https://attacker.example"))).status).toBe(403);
     expect((await POST(orderRequest({ ...requestBody, totalKopeks: 1 }))).status).toBe(400);
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported media types, malformed JSON and oversized bodies", async () => {
+    const unsupported = new Request("https://yori.test/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain", Origin: "https://yori.test" },
+      body: "{}",
+    });
+    const malformed = new Request("https://yori.test/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://yori.test" },
+      body: "{",
+    });
+    const oversized = new Request("https://yori.test/api/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": "16385",
+        Origin: "https://yori.test",
+      },
+      body: "{}",
+    });
+
+    expect((await POST(unsupported)).status).toBe(415);
+    expect((await POST(malformed)).status).toBe(400);
+    expect((await POST(oversized)).status).toBe(413);
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 });
