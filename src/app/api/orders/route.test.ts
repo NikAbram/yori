@@ -2,12 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
+  getOrderAccess: vi.fn(),
+  listOrders: vi.fn(),
   createOrder: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/services/telegram-auth", () => ({
   getCurrentTelegramSession: mocks.getSession,
+}));
+vi.mock("@/services/order-access", () => ({
+  getOrderAccess: mocks.getOrderAccess,
+}));
+vi.mock("@/services/customer-orders", () => ({
+  listCustomerOrders: mocks.listOrders,
 }));
 vi.mock("@/services/ordering", () => {
   class OrderingError extends Error {
@@ -34,7 +42,7 @@ vi.mock("@/services/checkout-rate-limit", () => {
   return { CheckoutRateLimitError };
 });
 
-import { POST } from "@/app/api/orders/route";
+import { GET, POST } from "@/app/api/orders/route";
 
 const requestBody = {
   recipientName: "Анна",
@@ -63,8 +71,9 @@ function orderRequest(body: unknown = requestBody, origin = "https://yori.test")
 describe("order route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("ORDER_MODE", "private_test");
-    mocks.getSession.mockResolvedValue({ userId: "user-id", allowPrivateTest: true });
+    mocks.getSession.mockResolvedValue({ userId: "user-id", telegramId: "42", allowPrivateTest: true });
+    mocks.getOrderAccess.mockResolvedValue({ allowed: true, isTest: true });
+    mocks.listOrders.mockResolvedValue([]);
     mocks.createOrder.mockResolvedValue({
       created: true,
       order: { id: "order-id", orderNo: "YR-ABC1234567", totalKopeks: 149_700 },
@@ -80,8 +89,18 @@ describe("order route", () => {
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
+  it("returns only the authenticated user's private order list", async () => {
+    mocks.listOrders.mockResolvedValue([{ id: "order-id", orderNo: "YR-123" }]);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store, private");
+    expect(mocks.listOrders).toHaveBeenCalledWith("user-id");
+  });
+
   it("fails closed for a user not enabled for private testing", async () => {
-    mocks.getSession.mockResolvedValue({ userId: "user-id", allowPrivateTest: false });
+    mocks.getOrderAccess.mockResolvedValue({ allowed: false, isTest: true });
 
     const response = await POST(orderRequest());
 
@@ -93,10 +112,14 @@ describe("order route", () => {
     const response = await POST(orderRequest());
 
     expect(response.status).toBe(201);
-    expect(mocks.createOrder).toHaveBeenCalledWith("user-id", expect.objectContaining({
-      phone: "+79271234567",
-      items: [{ productId: requestBody.items[0].productId, quantity: 2 }],
-    }));
+    expect(mocks.createOrder).toHaveBeenCalledWith(
+      "user-id",
+      expect.objectContaining({
+        phone: "+79271234567",
+        items: [{ productId: requestBody.items[0].productId, quantity: 2 }],
+      }),
+      { isTest: true },
+    );
     expect(response.headers.get("cache-control")).toBe("no-store, private");
   });
 

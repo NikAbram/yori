@@ -82,7 +82,7 @@ describe("ordering service", () => {
     };
     mocks.transaction.mockImplementation((callback) => callback(transaction));
 
-    const result = await createOrder("user-id", input);
+    const result = await createOrder("user-id", input, { isTest: true });
 
     expect(result).toEqual({ created: true, order });
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
@@ -107,7 +107,7 @@ describe("ordering service", () => {
   it("returns the existing order for the same idempotency key without another write", async () => {
     mocks.orderFindUnique.mockResolvedValue({ userId: "user-id", ...order });
 
-    await expect(createOrder("user-id", input)).resolves.toEqual({ created: false, order });
+    await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({ created: false, order });
     expect(mocks.consumeRateLimit).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
@@ -115,7 +115,7 @@ describe("ordering service", () => {
   it("does not reveal or reuse another user's idempotency key", async () => {
     mocks.orderFindUnique.mockResolvedValue({ userId: "another-user", ...order });
 
-    await expect(createOrder("user-id", input)).rejects.toBeInstanceOf(OrderingError);
+    await expect(createOrder("user-id", input, { isTest: true })).rejects.toBeInstanceOf(OrderingError);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
@@ -129,9 +129,23 @@ describe("ordering service", () => {
       totalKopeks: 70_000, cashOnDeliveryEnabled: false, cardOnDeliveryEnabled: false,
     });
 
-    await expect(createOrder("user-id", input)).rejects.toThrowError(
+    await expect(createOrder("user-id", input, { isTest: true })).rejects.toThrowError(
       expect.objectContaining({ code: "PAYMENT_METHOD_UNAVAILABLE" }),
     );
     expect(transaction.order.create).not.toHaveBeenCalled();
+  });
+
+  it("marks a live order as real only when the access policy explicitly allows it", async () => {
+    const transaction = {
+      order: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(order),
+      },
+    };
+    mocks.transaction.mockImplementation((callback) => callback(transaction));
+
+    await createOrder("user-id", input, { isTest: false });
+
+    expect(transaction.order.create.mock.calls[0][0].data.isTest).toBe(false);
   });
 });

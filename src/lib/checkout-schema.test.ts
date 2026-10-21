@@ -11,6 +11,7 @@ const validInput = {
   entrance: "",
   floor: "",
   comment: "",
+  paymentMethod: "CASH_ON_DELIVERY" as const,
   consent: true,
 };
 

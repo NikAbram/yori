@@ -49,7 +49,11 @@ async function findIdempotentOrder(userId: string, idempotencyKey: string) {
   return order;
 }
 
-export async function createOrder(userId: string, input: CreateOrderRequest) {
+export async function createOrder(
+  userId: string,
+  input: CreateOrderRequest,
+  options: { isTest: boolean },
+) {
   const existing = await findIdempotentOrder(userId, input.idempotencyKey);
   if (existing) return { created: false as const, order: existing };
 
@@ -95,7 +99,7 @@ export async function createOrder(userId: string, input: CreateOrderRequest) {
             discountKopeks: pricing.discountKopeks,
             totalKopeks: pricing.totalKopeks,
             paymentMethod: input.paymentMethod,
-            isTest: true,
+            isTest: options.isTest,
             idempotencyKey: input.idempotencyKey,
             consentAcceptedAt: new Date(),
             items: {

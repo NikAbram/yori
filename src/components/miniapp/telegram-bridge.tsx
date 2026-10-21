@@ -70,6 +70,8 @@ export function TelegramBridge() {
           body: JSON.stringify({ initData }),
           credentials: "same-origin",
           cache: "no-store",
+        }).then((response) => {
+          if (response.ok && active) router.refresh();
         }).catch(() => {
           // Authentication is required only for private flows; public browsing remains available.
         });
@@ -117,7 +119,7 @@ export function TelegramBridge() {
       delete root.dataset.tgColorScheme;
       root.removeAttribute("data-keyboard-open");
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!connected) return;

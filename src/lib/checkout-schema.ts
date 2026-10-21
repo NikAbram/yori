@@ -21,6 +21,7 @@ export const checkoutSchema = z.object({
   entrance: optionalText(20),
   floor: optionalText(20),
   comment: optionalText(500),
+  paymentMethod: z.enum(["CASH_ON_DELIVERY", "CARD_ON_DELIVERY"]),
   consent: z.boolean().refine(Boolean, "Подтвердите согласие на обработку данных"),
 });
 
@@ -35,7 +36,6 @@ const orderCartLineSchema = z.object({
 
 export const createOrderRequestSchema = checkoutSchema.extend({
   items: z.array(orderCartLineSchema).min(1).max(MAX_CART_LINES),
-  paymentMethod: z.enum(["CASH_ON_DELIVERY", "CARD_ON_DELIVERY"]),
   idempotencyKey: z.uuid(),
 }).strict().superRefine((value, context) => {
   const productIds = new Set<string>();

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getOrderPreview, getOrderStatusIndex, previewOrder } from "./orders";
+import { getOrderStatusIndex, orderStatusLabels } from "./orders";
 
-describe("order preview data", () => {
-  it("returns only the safe preview order", () => {
-    expect(getOrderPreview("preview")).toEqual(previewOrder);
-    expect(getOrderPreview("someone-else-order")).toBeUndefined();
+describe("order presentation data", () => {
+  it("has a customer-facing label for every status", () => {
+    expect(orderStatusLabels.NEW).toBe("Новый");
+    expect(orderStatusLabels.CANCELLED).toBe("Отменён");
   });
 
   it("keeps the current status in the ordered timeline", () => {

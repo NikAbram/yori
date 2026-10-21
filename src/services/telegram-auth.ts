@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
+import { isPrivateTestAllowlisted } from "@/services/order-access";
 
 export const TELEGRAM_INIT_DATA_MAX_LENGTH = 8_192;
 export const TELEGRAM_INIT_DATA_DEFAULT_MAX_AGE_SECONDS = 3_600;
@@ -194,6 +195,7 @@ export async function createTelegramSession(identity: VerifiedTelegramIdentity) 
   const ttlSeconds = getTelegramSessionTtlSeconds();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttlSeconds * 1_000);
+  const allowPrivateTest = isPrivateTestAllowlisted(identity.telegramId);
 
   const user = await prisma.$transaction(async (transaction) => {
     const savedUser = await transaction.telegramUser.upsert({
@@ -204,6 +206,7 @@ export async function createTelegramSession(identity: VerifiedTelegramIdentity) 
         lastName: identity.lastName,
         username: identity.username,
         languageCode: identity.languageCode,
+        allowPrivateTest,
         lastSeenAt: now,
       },
       update: {
@@ -211,6 +214,7 @@ export async function createTelegramSession(identity: VerifiedTelegramIdentity) 
         lastName: identity.lastName,
         username: identity.username,
         languageCode: identity.languageCode,
+        allowPrivateTest,
         lastSeenAt: now,
       },
       select: {

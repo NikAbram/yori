@@ -222,6 +222,8 @@ html { scroll-padding-bottom: calc(104px + var(--safe-bottom)); }
 .checkout-option > span, .checkout-option strong, .checkout-option small { display: block; }
 .checkout-option small { margin-top: 5px; color: var(--text-muted); line-height: 1.45; }
 .checkout-option[data-disabled="true"] { color: var(--text-muted); }
+.payment-options .checkout-option { grid-template-columns: auto auto 1fr; cursor: pointer; }
+.payment-options input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--tomato); }
 .consent-field { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; margin-top: 22px; color: var(--text-muted); font-size: 13px; line-height: 1.55; cursor: pointer; }
 .consent-field input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--tomato); }
 .consent-field a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
@@ -229,6 +231,7 @@ html { scroll-padding-bottom: calc(104px + var(--safe-bottom)); }
 .minimum-note { margin: 0 0 14px; padding: 13px 15px; border-radius: 12px; background: color-mix(in srgb, var(--amber) 11%, var(--surface-raised)); color: var(--text-muted); font-size: 13px; }
 .checkout-submit { width: 100%; min-height: 54px; }
 .checkout-submit:disabled { cursor: not-allowed; opacity: .48; transform: none; }
+.checkout-error { margin: 0 0 14px; padding: 14px 16px; border-left: 4px solid var(--tomato); background: color-mix(in srgb, var(--tomato) 8%, var(--surface-raised)); color: var(--accent-text); font-size: 13px; line-height: 1.5; }
 .checkout-checked { margin-top: 14px; padding: 16px; border-radius: 14px; background: color-mix(in srgb, var(--leaf) 12%, var(--surface-raised)); }
 .checkout-checked:focus { outline: 3px solid color-mix(in srgb, var(--leaf) 55%, white); outline-offset: 3px; }
 .checkout-receipt { position: sticky; top: 24px; padding: 28px; border-radius: 18px 18px 48px 18px; background: var(--ink); color: #fff9f0; box-shadow: var(--shadow-soft); }
@@ -262,6 +265,7 @@ html { scroll-padding-bottom: calc(104px + var(--safe-bottom)); }
 .order-preview-copy small { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
 .order-preview-status, .status-seal { padding: 9px 12px; border-radius: 999px; background: color-mix(in srgb, var(--tomato) 12%, var(--surface-raised)); color: var(--accent-text); font-size: 12px; font-weight: 800; }
 .preview-note { margin: 14px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.customer-orders-list { display: grid; }
 
 .order-detail { padding-block: 22px 80px; }
 .order-detail-head { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin: 42px 0 clamp(36px, 7vw, 76px); padding-bottom: 24px; border-bottom: 1px solid var(--line); }
@@ -279,11 +283,15 @@ html { scroll-padding-bottom: calc(104px + var(--safe-bottom)); }
 .order-track li[data-state="current"] { color: var(--text); }
 .order-track strong { display: block; margin-bottom: 6px; font-size: 17px; }
 .order-track p { margin: 0; line-height: 1.45; }
+.order-cancelled { margin: 0 0 24px; padding: 15px 17px; border-left: 4px solid var(--tomato); background: color-mix(in srgb, var(--tomato) 8%, var(--surface-raised)); color: var(--text-muted); }
 .order-receipt { padding: 28px; border-radius: 18px 18px 48px 18px; background: var(--ink); color: #fff9f0; box-shadow: var(--shadow-soft); }
 .receipt-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; font: 400 31px/1 Georgia, serif; }
 .order-receipt ul { display: grid; gap: 16px; margin: 0; padding: 20px 0; border-block: 1px solid #4a433c; list-style: none; }
 .order-receipt li, .order-receipt dl > div { display: flex; justify-content: space-between; gap: 20px; }
 .order-receipt li { color: #d9d0c4; font-size: 13px; line-height: 1.45; }
+.order-private-details { display: grid; gap: 8px; margin-top: 22px; padding-top: 20px; border-top: 1px solid #4a433c; }
+.order-private-details p { margin: 0; color: #d9d0c4; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.order-private-details strong { color: white; }
 .order-receipt li > span:last-child { flex: 0 0 auto; color: white; }
 .order-receipt dl { display: grid; gap: 10px; margin: 20px 0; }
 .order-receipt dt, .order-receipt dd { margin: 0; }

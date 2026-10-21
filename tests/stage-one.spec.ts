@@ -4,7 +4,9 @@ import { join } from "node:path";
 
 function watchRuntimeErrors(page: import("@playwright/test").Page) {
   const errors: string[] = [];
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("console", (message) => {
+    if (message.type() === "error" || message.type() === "warning") errors.push(message.text());
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   return errors;
 }
@@ -84,17 +86,18 @@ test("пустой поиск предлагает восстановление"
   expect(runtimeErrors).toEqual([]);
 });
 
-test("личные разделы объясняют доступ и показывают безопасный пример статуса", async ({ page }) => {
+const privateOrderPath = "/orders/9ab96f80-58b8-4c49-8c93-1a6d282d3016";
+
+test("личные разделы скрывают заказы без Telegram-сессии", async ({ page }) => {
   const runtimeErrors = watchRuntimeErrors(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/orders");
   await expect(page).toHaveTitle(/Заказы/);
   await expect(page.getByRole("heading", { name: "Личные данные скрыты" })).toBeVisible();
-  await page.getByRole("link", { name: /YŌRI · пример/ }).click();
-  await expect(page).toHaveURL(/\/orders\/preview$/);
-  await expect(page.getByRole("heading", { name: "Статус" })).toBeVisible();
-  await expect(page.getByText("Готовится", { exact: true }).first()).toBeVisible();
-  await page.screenshot({ path: join(tmpdir(), "yori-order-preview-mobile.png"), fullPage: false });
+  await expect(page.locator(".order-preview")).toHaveCount(0);
+  await page.goto(privateOrderPath);
+  await expect(page.getByRole("heading", { name: "Откройте заказ в Telegram" })).toBeVisible();
+  await page.screenshot({ path: join(tmpdir(), "yori-order-private-mobile.png"), fullPage: false });
 
   await page.getByRole("link", { name: "Профиль" }).click();
   await expect(page.getByRole("heading", { name: "Откройте YŌRI в Telegram" })).toBeVisible();
@@ -106,19 +109,19 @@ test("личные разделы объясняют доступ и показ�
 
 test("новые маршруты не создают горизонтальный скролл", async ({ page }) => {
   const runtimeErrors = watchRuntimeErrors(page);
-  for (const route of ["/orders", "/orders/preview", "/profile", "/help", "/delivery", "/privacy"]) {
+  for (const route of ["/orders", privateOrderPath, "/profile", "/help", "/delivery", "/privacy"]) {
     for (const width of [320, 1440]) {
       await page.setViewportSize({ width, height: width === 320 ? 800 : 900 });
       await page.goto(route);
       const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
       expect(dimensions.scrollWidth, `${route} at ${width}px`).toBeLessThanOrEqual(dimensions.clientWidth);
-      if (route === "/orders/preview" && width === 1440) await page.screenshot({ path: join(tmpdir(), "yori-order-preview-desktop.png"), fullPage: false });
+      if (route === privateOrderPath && width === 1440) await page.screenshot({ path: join(tmpdir(), "yori-order-private-desktop.png"), fullPage: false });
     }
   }
   expect(runtimeErrors).toEqual([]);
 });
 
-test("checkout проверяет данные локально и честно не создаёт заказ", async ({ page }) => {
+test("checkout вне разрешённой Telegram-сессии остаётся закрытым", async ({ page }) => {
   const runtimeErrors = watchRuntimeErrors(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/catalog");
@@ -130,20 +133,8 @@ test("checkout проверяет данные локально и честно 
   await expect(page).toHaveURL(/\/checkout$/);
   await expect(page.getByRole("heading", { name: "Куда привезти заказ" })).toBeVisible();
   await expect(page.getByText("Приём заказов сейчас закрыт", { exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Проверить данные" }).click();
-  await expect(page.getByText("Укажите имя получателя")).toBeVisible();
-  await expect(page.getByText("Введите российский номер из 10 цифр")).toBeVisible();
-
-  await page.getByLabel("Имя").fill("Никита");
-  await page.getByLabel("Телефон").fill("8 927 123-45-67");
-  await page.getByLabel("Город").fill("Самара");
-  await page.getByLabel("Улица").fill("Ленинградская");
-  await page.getByLabel("Дом").fill("10");
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Проверить данные" }).click();
-
-  await expect(page.getByText("Данные заполнены", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Заказ не создан/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Оформить заказ" })).toBeDisabled();
+  await expect(page.getByRole("radiogroup", { name: "Способ оплаты" }).getByRole("radio")).toHaveCount(0);
   await page.screenshot({ path: join(tmpdir(), "yori-checkout-mobile.png"), fullPage: true });
   expect(runtimeErrors).toEqual([]);
 });

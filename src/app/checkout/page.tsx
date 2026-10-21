@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CheckoutExperience } from "@/components/miniapp/checkout-experience";
 import { getPublicCatalog } from "@/services/catalog";
+import { getOrderAccess } from "@/services/order-access";
+import { getCurrentTelegramSession } from "@/services/telegram-auth";
 
 export const metadata: Metadata = { title: "Оформление", robots: { index: false, follow: false } };
 
@@ -10,6 +12,20 @@ export default function CheckoutPage() {
 }
 
 async function CheckoutContent() {
-  const { products } = await getPublicCatalog();
-  return <CheckoutExperience products={products} />;
+  const [catalog, session] = await Promise.all([
+    getPublicCatalog(),
+    getCurrentTelegramSession(),
+  ]);
+  const access = await getOrderAccess(session);
+  return (
+    <CheckoutExperience
+      products={catalog.products}
+      access={{
+        allowed: access.allowed,
+        cashOnDeliveryEnabled: access.cashOnDeliveryEnabled,
+        cardOnDeliveryEnabled: access.cardOnDeliveryEnabled,
+      }}
+      hasTelegramSession={Boolean(session)}
+    />
+  );
 }

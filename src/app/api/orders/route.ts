@@ -2,10 +2,23 @@ import { createOrderRequestSchema } from "@/lib/checkout-schema";
 import { privateJson, readBoundedJson, requestHasTrustedOrigin } from "@/lib/server-request";
 import { CartPricingError } from "@/services/cart-pricing";
 import { CheckoutRateLimitError } from "@/services/checkout-rate-limit";
+import { listCustomerOrders } from "@/services/customer-orders";
 import { createOrder, OrderingError } from "@/services/ordering";
+import { getOrderAccess } from "@/services/order-access";
 import { getCurrentTelegramSession } from "@/services/telegram-auth";
 
 const MAX_REQUEST_BYTES = 16_384;
+
+export async function GET() {
+  const session = await getCurrentTelegramSession();
+  if (!session) return privateJson({ error: "Требуется вход через Telegram." }, 401);
+
+  try {
+    return privateJson({ orders: await listCustomerOrders(session.userId) });
+  } catch {
+    return privateJson({ error: "Не удалось загрузить заказы." }, 503);
+  }
+}
 
 export async function POST(request: Request) {
   if (!requestHasTrustedOrigin(request)) {
@@ -24,12 +37,12 @@ export async function POST(request: Request) {
     const session = await getCurrentTelegramSession();
     if (!session) return privateJson({ error: "Требуется вход через Telegram." }, 401);
 
-    // Until part 3.5 introduces the complete mode policy, checkout fails closed.
-    if (process.env.ORDER_MODE !== "private_test" || !session.allowPrivateTest) {
+    const access = await getOrderAccess(session);
+    if (!access.allowed) {
       return privateJson({ error: "Приём заказов сейчас закрыт." }, 409);
     }
 
-    const result = await createOrder(session.userId, input.data);
+    const result = await createOrder(session.userId, input.data, { isTest: access.isTest });
     return privateJson({ order: result.order, repeated: !result.created }, result.created ? 201 : 200);
   } catch (error) {
     if (error instanceof RangeError) {

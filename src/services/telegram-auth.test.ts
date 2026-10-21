@@ -128,6 +128,7 @@ describe("Telegram server sessions", () => {
   });
 
   it("stores only a hash of a random opaque token", async () => {
+    vi.stubEnv("ALLOWED_TELEGRAM_USER_IDS", "42");
     const user = {
       id: "user-id",
       telegramId: "42",
@@ -156,10 +157,13 @@ describe("Telegram server sessions", () => {
     });
 
     const createCall = transaction.telegramSession.create.mock.calls[0][0];
+    const userUpsertCall = transaction.telegramUser.upsert.mock.calls[0][0];
     expect(session.token).toHaveLength(43);
     expect(createCall.data.tokenHash).toBe(hashTelegramSessionToken(session.token));
     expect(createCall.data.tokenHash).not.toBe(session.token);
     expect(session.owner.telegramId).toBe("42");
+    expect(userUpsertCall.create.allowPrivateTest).toBe(true);
+    expect(userUpsertCall.update.allowPrivateTest).toBe(true);
   });
 
   it("does not create a session for a blocked user", async () => {

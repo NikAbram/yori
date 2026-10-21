@@ -4,11 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const targetViewports = [320, 375, 390, 430, 768, 1024, 1440];
-const publicRoutes = ["/", "/catalog", "/product/shrimp-tempura", "/cart", "/checkout", "/orders", "/orders/preview", "/profile", "/help", "/delivery", "/privacy"];
+const publicRoutes = ["/", "/catalog", "/product/shrimp-tempura", "/cart", "/checkout", "/orders", "/orders/9ab96f80-58b8-4c49-8c93-1a6d282d3016", "/profile", "/help", "/delivery", "/privacy"];
 
 function watchRuntimeErrors(page: Page) {
   const errors: string[] = [];
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("console", (message) => {
+    if (message.type() === "error" || message.type() === "warning") errors.push(message.text());
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   return errors;
 }
