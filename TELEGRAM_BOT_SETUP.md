@@ -60,7 +60,9 @@ orders - Мои заказы
 
 Ожидаемый адрес: `<NEXT_PUBLIC_APP_URL>/api/telegram/webhook`.
 
-Webhook не регистрируется на этапе 4.1. Route Handler, проверка заголовка `X-Telegram-Bot-Api-Secret-Token` и дедупликация появятся в части 4.3, а реальная регистрация и smoke-тест выполняются на этапе размещения. Production long polling и `getUpdates` не используются.
+Route Handler принимает только `POST` с `Content-Type: application/json`, проверяет заголовок `X-Telegram-Bot-Api-Secret-Token` до чтения тела и ограничивает payload 128 КиБ. Каждый `update_id` атомарно регистрируется в PostgreSQL: повторная доставка подтверждается без повторного запуска команды. Если обработка завершилась ошибкой, запись снимается, а Telegram получает retryable `503`.
+
+Реальная регистрация webhook и smoke-тест выполняются на этапе размещения. Production long polling и `getUpdates` не используются.
 
 ## 5. Что проверить перед регистрацией
 
@@ -71,7 +73,7 @@ Webhook не регистрируется на этапе 4.1. Route Handler, п
 - Menu Button открывает тот же origin, что и `NEXT_PUBLIC_APP_URL`;
 - webhook регистрируется с тем же secret token, который настроен на сервере.
 
-Регистрация Menu Button через API и обработчик webhook будут добавлены последующими частями этапа 4. Команды не отправляют запросы в Telegram до получения реального webhook update.
+Регистрация Menu Button через API будет добавлена последующей частью этапа 4. Команды не отправляют запросы в Telegram до получения реального webhook update.
 
 ## Официальные источники
 

@@ -9,10 +9,12 @@ import {
 } from "@/lib/telegram/bot-config";
 
 const BOT_DISPLAY_NAME = "YŌRI";
+const TELEGRAM_API_TIMEOUT_SECONDS = 8;
 export const TELEGRAM_WEBHOOK_PATH = "/api/telegram/webhook";
 
 export function createTelegramBot(config = getTelegramBotConfig()) {
   return new Bot(config.token, {
+    client: { timeoutSeconds: TELEGRAM_API_TIMEOUT_SECONDS },
     botInfo: {
       id: config.botId,
       is_bot: true,
