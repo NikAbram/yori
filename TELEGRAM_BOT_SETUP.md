@@ -44,6 +44,18 @@ Webhook secret должен содержать 32–256 символов `A–Z`
 
 Код YŌRI формирует тот же payload `web_app` программно, но часть 4.1 не отправляет его в Telegram. Основная Mini App и её медиа-превью также настраиваются только для реального HTTPS URL.
 
+### Команды
+
+Через Bot Settings → Commands или `/setcommands` сохраните следующий список только после развёртывания обработчика webhook:
+
+```text
+start - Открыть YŌRI
+help - Как оформить заказ
+orders - Мои заказы
+```
+
+Код части 4.2 уже обрабатывает эти команды и формирует `web_app`-кнопки. `/orders` открывает HTTPS-маршрут `/orders` напрямую: Main Mini App и `startapp` не требуются для этого сценария.
+
 ## 4. Webhook
 
 Ожидаемый адрес: `<NEXT_PUBLIC_APP_URL>/api/telegram/webhook`.
@@ -59,7 +71,7 @@ Webhook не регистрируется на этапе 4.1. Route Handler, п
 - Menu Button открывает тот же origin, что и `NEXT_PUBLIC_APP_URL`;
 - webhook регистрируется с тем же secret token, который настроен на сервере.
 
-Команды `/start`, `/help`, `/orders`, регистрация Menu Button через API и webhook будут добавляться последующими частями этапа 4.
+Регистрация Menu Button через API и обработчик webhook будут добавлены последующими частями этапа 4. Команды не отправляют запросы в Telegram до получения реального webhook update.
 
 ## Официальные источники
 
