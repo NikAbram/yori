@@ -28,6 +28,7 @@
     "@tma.js/sdk": "^3.3.0",
     "@tma.js/sdk-react": "^3.0.23",
     "dotenv": "18.0.8",
+    "grammy": "1.46.0",
     "lucide-react": "^1.58.0",
     "next": "16.4.2",
     "pg": "8.16.3",
