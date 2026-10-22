@@ -146,11 +146,6 @@ export async function getPublicProductBySlug(slug: string) {
   };
 }
 
-export async function getPublishedProductSlugs() {
-  const { products } = await getPublicCatalog();
-  return products.map(({ slug }) => slug);
-}
-
 export function revalidatePublicCatalog() {
   revalidateTag(CATALOG_CACHE_TAG, "max");
 }

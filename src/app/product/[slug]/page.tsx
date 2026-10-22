@@ -5,16 +5,11 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import { ProductActions } from "@/components/miniapp/product-actions";
-import { getPublicProductBySlug, getPublishedProductSlugs } from "@/services/catalog";
+import { getPublicProductBySlug } from "@/services/catalog";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
 export const instant = false;
-
-export async function generateStaticParams() {
-  const slugs = await getPublishedProductSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const result = await getPublicProductBySlug((await params).slug);

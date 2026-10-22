@@ -8,6 +8,8 @@ import { listAdminOrders } from "@/services/admin-orders";
 
 export const metadata: Metadata = { title: "Заказы" };
 
+export const instant = false;
+
 function pageHref(filters: ReturnType<typeof parseAdminOrderFilters>, page: number) {
   const params = new URLSearchParams();
   if (filters.q) params.set("q", filters.q);

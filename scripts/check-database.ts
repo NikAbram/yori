@@ -76,6 +76,8 @@ async function checkDatabase() {
     adminUserCount,
     adminSessionCount,
     adminAccountCount,
+    internalNoteCount,
+    adminAuditLogCount,
     settings,
     migrationRows,
   ] =
@@ -85,6 +87,8 @@ async function checkDatabase() {
       prisma.adminUser.count(),
       prisma.adminSession.count(),
       prisma.adminAccount.count(),
+      prisma.orderInternalNote.count(),
+      prisma.adminAuditLog.count(),
       prisma.siteSettings.findUnique({
         where: { id: "default" },
         select: {
@@ -115,6 +119,8 @@ async function checkDatabase() {
     adminUserCount,
     adminSessionCount,
     adminAccountCount,
+    internalNoteCount,
+    adminAuditLogCount,
     transactionProductCount,
     settings,
     appliedMigrations: migrationRows.map(({ migration_name }) => migration_name),

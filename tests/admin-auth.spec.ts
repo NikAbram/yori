@@ -12,7 +12,7 @@ const qaEmail = "qa-admin@yori.invalid";
 const qaTelegramId = "999999999991";
 const qaOrderIdempotencyKey = "qa-crm-stage-5-2";
 const qaPassword = process.env.YORI_E2E_ADMIN_PASSWORD;
-const databaseUrl = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
+const databaseUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 const runAddressOctet = (process.pid % 200) + 20;
 const invalidLoginIp = `198.51.100.${runAddressOctet}`;
 const validLoginIp = `203.0.113.${runAddressOctet}`;
@@ -28,8 +28,9 @@ test.beforeAll(async () => {
   const password = await hashPassword(qaPassword);
 
   try {
-    await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
     await prisma.order.deleteMany({ where: { idempotencyKey: qaOrderIdempotencyKey } });
+    await prisma.adminAuditLog.deleteMany({ where: { adminUser: { email: qaEmail } } });
+    await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
     await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
     const user = await prisma.adminUser.create({
       data: {
@@ -78,6 +79,9 @@ test.beforeAll(async () => {
             lineTotalKopeks: 64_900,
           },
         },
+        statusHistory: {
+          create: { toStatus: "NEW", actorType: "SYSTEM" },
+        },
       },
     });
   } finally {
@@ -91,6 +95,7 @@ test.afterAll(async () => {
   try {
     await prisma.order.deleteMany({ where: { idempotencyKey: qaOrderIdempotencyKey } });
     await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
+    await prisma.adminAuditLog.deleteMany({ where: { adminUser: { email: qaEmail } } });
     await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
   } finally {
     await prisma.$disconnect();
@@ -172,6 +177,19 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.getByRole("link", { name: "Заказы" }).click();
   await expect(page).toHaveURL(/\/admin\/orders$/);
   await expect(page.getByRole("heading", { name: "Все заказы" })).toBeVisible();
+  await page.getByRole("link", { name: "Открыть заказ QA-5210" }).click();
+  await expect(page).toHaveURL(/\/admin\/orders\/[0-9a-f-]+$/);
+  await expect(page.getByRole("heading", { name: "QA-5210" })).toBeVisible();
+  await expect(page.getByText("Контакты и доставка")).toBeVisible();
+  await expect(page.getByLabel("Следующий статус")).toHaveValue("CONFIRMED");
+  await page.getByLabel("Новая внутренняя заметка").fill("QA: упаковку проверить дважды");
+  await page.getByRole("button", { name: "Добавить заметку" }).click();
+  await expect(page.getByRole("status")).toHaveText("Заметка добавлена.");
+  await expect(page.getByText("QA: упаковку проверить дважды")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "yori-admin-order-mobile.png"), fullPage: true });
+
+  await page.getByRole("link", { name: "Все заказы" }).click();
   await page.getByLabel("Номер или телефон").fill("order-that-does-not-exist");
   await page.getByRole("button", { name: "Применить" }).click();
   await expect(page).toHaveURL(/q=order-that-does-not-exist/);

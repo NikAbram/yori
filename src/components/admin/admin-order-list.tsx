@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { orderStatusLabels } from "@/data/orders";
 import { formatMoney } from "@/lib/money";
 import type { OrderStatus } from "@/types/orders";
@@ -55,7 +57,7 @@ export function AdminOrderList({ orders, compact = false }: { orders: AdminOrder
           return (
             <li className="admin-order-row" data-status={order.status} key={order.id}>
               <div className="admin-order-number">
-                <strong>{order.orderNo}</strong>
+                <Link href={`/admin/orders/${order.id}`} aria-label={`Открыть заказ ${order.orderNo}`}><strong>{order.orderNo}</strong></Link>
                 <time dateTime={order.createdAt.toISOString()}>{dateFormatter.format(order.createdAt)}</time>
                 {order.isTest ? <em>Тестовый</em> : null}
               </div>

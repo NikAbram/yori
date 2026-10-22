@@ -8,6 +8,8 @@ import { getAdminDashboard } from "@/services/admin-orders";
 
 export const metadata: Metadata = { title: "Сводка" };
 
+export const instant = false;
+
 export default async function AdminHomePage({
   searchParams,
 }: {

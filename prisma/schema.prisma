@@ -49,6 +49,12 @@ enum NotificationStatus {
   FAILED
 }
 
+enum AdminAuditAction {
+  ORDER_STATUS_CHANGED
+  ORDER_NOTE_ADDED
+  NOTIFICATION_RETRY_REQUESTED
+}
+
 model TelegramUser {
   id               String               @id @default(uuid()) @db.Uuid
   telegramId       String               @unique @db.VarChar(32)
@@ -116,6 +122,8 @@ model AdminUser {
   sessions      AdminSession[]
   accounts      AdminAccount[]
   statusChanges OrderStatusHistory[]
+  internalNotes OrderInternalNote[]
+  auditLogs     AdminAuditLog[]
   settingsEdits SiteSettings[]
 
   @@index([isActive, role])
@@ -247,6 +255,8 @@ model Order {
   user              TelegramUser         @relation(fields: [userId], references: [id], onDelete: Restrict)
   items             OrderItem[]
   statusHistory     OrderStatusHistory[]
+  internalNotes     OrderInternalNote[]
+  adminAuditLogs    AdminAuditLog[]
   notifications     NotificationLog[]
 
   @@index([userId, createdAt])
@@ -286,6 +296,34 @@ model OrderStatusHistory {
   @@index([orderId, createdAt])
   @@index([adminUserId, createdAt])
   @@index([telegramUserId, createdAt])
+}
+
+model OrderInternalNote {
+  id          String    @id @default(uuid()) @db.Uuid
+  orderId     String    @db.Uuid
+  adminUserId String    @db.Uuid
+  body        String    @db.VarChar(1000)
+  createdAt   DateTime  @default(now())
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([adminUserId, createdAt])
+}
+
+model AdminAuditLog {
+  id          String           @id @default(uuid()) @db.Uuid
+  adminUserId String           @db.Uuid
+  orderId     String?          @db.Uuid
+  action      AdminAuditAction
+  summary     String           @db.VarChar(500)
+  createdAt   DateTime         @default(now())
+  adminUser   AdminUser        @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+  order       Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId, createdAt])
+  @@index([orderId, createdAt])
+  @@index([action, createdAt])
 }
 
 model ProcessedTelegramUpdate {

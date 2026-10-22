@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   aggregate: vi.fn(),
   findMany: vi.fn(),
+  findUnique: vi.fn(),
   connection: vi.fn(),
 }));
 
@@ -12,10 +13,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({ connection: mocks.connection }));
 vi.mock("@/services/admin-auth", () => ({ requireCurrentAdmin: mocks.requireCurrentAdmin }));
 vi.mock("@/lib/db/prisma", () => ({
-  prisma: { order: { count: mocks.count, aggregate: mocks.aggregate, findMany: mocks.findMany } },
+  prisma: { order: { count: mocks.count, aggregate: mocks.aggregate, findMany: mocks.findMany, findUnique: mocks.findUnique } },
 }));
 
-import { getAdminDashboard, listAdminOrders } from "@/services/admin-orders";
+import { getAdminDashboard, getAdminOrderDetail, listAdminOrders } from "@/services/admin-orders";
 
 describe("administrative order reads", () => {
   beforeEach(() => {
@@ -70,5 +71,22 @@ describe("administrative order reads", () => {
     await expect(listAdminOrders({ q: "", page: 1 })).rejects.toThrow("redirect");
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.findMany).not.toHaveBeenCalled();
+  });
+
+  it("authenticates detail reads and selects the operational relations explicitly", async () => {
+    mocks.findUnique.mockResolvedValue(null);
+
+    await expect(getAdminOrderDetail("order-id")).resolves.toBeNull();
+    expect(mocks.requireCurrentAdmin).toHaveBeenCalledOnce();
+    expect(mocks.findUnique).toHaveBeenCalledWith({
+      where: { id: "order-id" },
+      select: expect.objectContaining({
+        items: expect.any(Object),
+        statusHistory: expect.any(Object),
+        internalNotes: expect.any(Object),
+        notifications: expect.any(Object),
+        adminAuditLogs: expect.any(Object),
+      }),
+    });
   });
 });
