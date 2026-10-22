@@ -12,6 +12,11 @@ export default defineConfig({
   webServer: {
     command: "npm run start -- --hostname 127.0.0.1 --port 3207",
     url: "http://127.0.0.1:3207",
+    env: {
+      ...process.env,
+      AUTH_SECRET: process.env.AUTH_SECRET ?? "playwright-only-auth-secret-0000000000",
+      AUTH_BASE_URL: "http://127.0.0.1:3207",
+    },
     reuseExistingServer: true,
     timeout: 120_000,
   },

@@ -104,15 +104,74 @@ model CustomerAddress {
 
 model AdminUser {
   id            String               @id @default(uuid()) @db.Uuid
+  name          String               @db.VarChar(160)
   email         String               @unique @db.VarChar(320)
-  passwordHash  String               @db.VarChar(255)
+  emailVerified Boolean              @default(true)
+  image         String?              @db.VarChar(500)
   role          AdminRole            @default(MANAGER)
   isActive      Boolean              @default(true)
   lastLoginAt   DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+  sessions      AdminSession[]
+  accounts      AdminAccount[]
   statusChanges OrderStatusHistory[]
   settingsEdits SiteSettings[]
+
+  @@index([isActive, role])
+}
+
+model AdminSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  ipAddress String?   @db.VarChar(64)
+  userAgent String?   @db.VarChar(512)
+  userId    String    @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AdminAccount {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @db.VarChar(255)
+  providerId            String    @db.VarChar(64)
+  userId                String    @db.Uuid
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   @db.VarChar(255)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([providerId, accountId])
+}
+
+model AdminVerification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String   @db.VarChar(320)
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model AdminAuthRateLimit {
+  id          String @id @default(uuid()) @db.Uuid
+  key         String @unique @db.VarChar(255)
+  count       Int
+  lastRequest BigInt
 }
 
 model Category {

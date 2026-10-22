@@ -171,6 +171,53 @@ html { scroll-padding-bottom: calc(104px + var(--safe-bottom)); }
 .quantity button { height: 48px; border: 0; background: transparent; cursor: pointer; }
 .quantity output { text-align: center; font-weight: 800; }
 
+/* CRM uses the same brand materials with a denser, operational rhythm. */
+.admin-login, .admin-shell { --admin-charcoal: #181613; --admin-paper: #f7f0e5; --admin-red: #c63f2c; --admin-line: #d7cdc0; color: #1d1915; }
+.admin-login { min-height: 100dvh; display: grid; place-items: center; gap: 20px; padding: clamp(20px, 5vw, 64px); background: var(--admin-charcoal); }
+.admin-login-panel { position: relative; width: min(100%, 920px); display: grid; grid-template-columns: minmax(0, .9fr) minmax(320px, 1.1fr); gap: clamp(36px, 7vw, 90px); overflow: hidden; padding: clamp(28px, 6vw, 72px); border-radius: 8px 8px 52px 8px; background: var(--admin-paper); box-shadow: 0 32px 90px rgb(0 0 0 / 34%); }
+.admin-login-panel::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 7px; background: var(--admin-red); }
+.admin-login-brand { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; font: 800 24px/1 Georgia, serif; letter-spacing: .15em; }
+.admin-login-brand i { width: 34px; height: 1px; background: var(--admin-red); }
+.admin-login-copy { align-self: end; }
+.admin-login-copy > p, .admin-intro > p:first-child { margin: 0 0 16px; color: #6d6258; font-size: 13px; }
+.admin-login-copy h1 { max-width: 440px; margin: 0 0 22px; font: 400 clamp(44px, 7vw, 74px)/.94 Georgia, serif; letter-spacing: -.045em; }
+.admin-login-copy > span { display: block; max-width: 430px; color: #665e56; line-height: 1.6; }
+.admin-login-form { align-self: end; display: grid; gap: 10px; padding-top: 10px; }
+.admin-login-form label { margin-top: 8px; font-size: 13px; font-weight: 750; }
+.admin-login-form input { width: 100%; min-height: 52px; padding: 0 14px; border: 1px solid var(--admin-line); border-radius: 10px; background: #fffaf2; color: #1d1915; }
+.admin-login-form input:focus { border-color: var(--admin-red); outline: 3px solid rgb(198 63 44 / 18%); outline-offset: 1px; }
+.admin-login-form button { min-height: 52px; margin-top: 4px; border: 0; border-radius: 10px 10px 20px 10px; background: var(--admin-red); color: white; font-weight: 800; cursor: pointer; }
+.admin-login-form button:disabled, .admin-sign-out:disabled { cursor: wait; opacity: .65; }
+.admin-form-message { min-height: 22px; margin: 4px 0 0; color: #8c2c20; font-size: 13px; line-height: 1.45; }
+.admin-login-footnote { margin: 0; color: #ada297; font-size: 12px; }
+.admin-shell { min-height: 100dvh; background: var(--admin-paper); }
+.admin-header { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px clamp(20px, 4vw, 52px); border-bottom: 1px solid var(--admin-line); background: #1a1815; color: #fff9f0; }
+.admin-wordmark { font: 800 22px/1 Georgia, serif; letter-spacing: .12em; }
+.admin-wordmark span { margin-left: 9px; color: #d88272; font: 700 11px/1 Inter, "Segoe UI", sans-serif; letter-spacing: .08em; }
+.admin-identity { display: grid; grid-template-columns: auto auto; column-gap: 14px; align-items: center; text-align: right; }
+.admin-identity > span { font-size: 14px; font-weight: 750; }
+.admin-identity small { grid-column: 1; color: #bdb4a9; }
+.admin-sign-out { grid-column: 2; grid-row: 1 / 3; min-height: 40px; padding: 0 14px; border: 1px solid #514b44; border-radius: 8px; background: transparent; color: #fff9f0; cursor: pointer; }
+.admin-main { width: min(100%, 1440px); margin-inline: auto; padding: clamp(30px, 6vw, 80px) clamp(20px, 5vw, 72px); }
+.admin-intro { max-width: 850px; }
+.admin-intro h1 { max-width: 780px; margin: 0; font: 400 clamp(46px, 7vw, 86px)/.94 Georgia, serif; letter-spacing: -.05em; }
+.admin-intro-line { width: min(180px, 36vw); height: 6px; margin: 34px 0; background: var(--admin-red); }
+.admin-intro-note { max-width: 650px; margin: 0; color: #665e56; font-size: clamp(16px, 2vw, 19px); line-height: 1.65; }
+.admin-state { min-height: 100dvh; display: grid; align-content: center; justify-items: start; gap: 14px; padding: clamp(28px, 8vw, 110px); background: #181613; color: #fff9f0; }
+.admin-state-mark { width: 80px; height: 6px; background: #c63f2c; }
+.admin-state h1 { max-width: 650px; margin: 0; font: 400 clamp(42px, 7vw, 76px)/.96 Georgia, serif; }
+.admin-state p { max-width: 580px; margin: 0; color: #c7bdb2; line-height: 1.55; }
+.admin-state button { min-height: 46px; padding: 0 18px; border: 1px solid #746b62; border-radius: 9px; background: transparent; color: #fff9f0; cursor: pointer; }
+
+@media (max-width: 720px) {
+  .admin-login-panel { grid-template-columns: 1fr; gap: 28px; }
+  .admin-login-brand { grid-column: 1; }
+  .admin-login-copy { align-self: auto; }
+  .admin-header { align-items: flex-start; }
+  .admin-identity { grid-template-columns: 1fr; }
+  .admin-sign-out { grid-column: 1; grid-row: auto; margin-top: 8px; }
+}
+
 .cart-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(290px, .6fr); gap: clamp(24px, 5vw, 64px); align-items: start; }
 .cart-list { display: grid; gap: 12px; }
 .cart-line { display: grid; grid-template-columns: 112px 1fr auto; gap: 18px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 16px 16px 32px 16px; background: var(--surface-raised); }

@@ -1,8 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/miniapp/bottom-nav";
 import { TelegramBridge } from "@/components/miniapp/telegram-bridge";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/admin")) return children;
+
   return (
     <div className="app-frame">
       <TelegramBridge />

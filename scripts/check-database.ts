@@ -70,10 +70,21 @@ function describeError(error: unknown) {
 }
 
 async function checkDatabase() {
-  const [categoryCount, productCount, settings, migrationRows] =
+  const [
+    categoryCount,
+    productCount,
+    adminUserCount,
+    adminSessionCount,
+    adminAccountCount,
+    settings,
+    migrationRows,
+  ] =
     await Promise.all([
       prisma.category.count(),
       prisma.product.count(),
+      prisma.adminUser.count(),
+      prisma.adminSession.count(),
+      prisma.adminAccount.count(),
       prisma.siteSettings.findUnique({
         where: { id: "default" },
         select: {
@@ -101,6 +112,9 @@ async function checkDatabase() {
     adapterMode: useTransactionalAdapter ? "transactional" : "http",
     categoryCount,
     productCount,
+    adminUserCount,
+    adminSessionCount,
+    adminAccountCount,
     transactionProductCount,
     settings,
     appliedMigrations: migrationRows.map(({ migration_name }) => migration_name),

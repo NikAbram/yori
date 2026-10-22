@@ -17,6 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:check": "tsx scripts/check-database.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@prisma/client": "7.10.1",
     "@tma.js/sdk": "^3.3.0",
     "@tma.js/sdk-react": "^3.0.23",
+    "better-auth": "1.7.12",
     "dotenv": "18.0.8",
     "grammy": "1.46.0",
     "lucide-react": "^1.58.0",
