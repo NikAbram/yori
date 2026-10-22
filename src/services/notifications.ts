@@ -7,6 +7,7 @@ import { getOptionalTelegramManagerChatId } from "@/lib/telegram/bot-config";
 import { initializeYoriTelegramBot } from "@/services/telegram-bot";
 
 export const MAX_NOTIFICATION_ATTEMPTS = 3;
+export const NOTIFICATION_CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
 
 type CustomerNotificationEvent = "ORDER_CONFIRMED" | "ORDER_STATUS_CHANGED";
 type DeliveryMode = "initial" | "manual-retry";
@@ -21,6 +22,7 @@ const notificationSelect = {
   eventType: true,
   status: true,
   attemptCount: true,
+  lastAttemptAt: true,
   order: {
     select: {
       orderNo: true,
@@ -159,18 +161,26 @@ async function deliverNotification(
     return { outcome: "attempts-exhausted" as const };
   }
 
-  const expectedStatus = mode === "initial" ? "PENDING" : "FAILED";
-  if (notification.status !== expectedStatus) return { outcome: "not-claimable" as const };
-  if (mode === "initial" && notification.attemptCount !== 0) {
+  const now = dependencies.now?.() ?? new Date();
+  if (mode === "initial") {
+    if (notification.status !== "PENDING" || notification.attemptCount !== 0) {
+      return { outcome: "not-claimable" as const };
+    }
+  } else if (notification.status === "PENDING") {
+    const claimIsFresh = notification.attemptCount > 0
+      && notification.lastAttemptAt !== null
+      && now.getTime() - notification.lastAttemptAt.getTime() < NOTIFICATION_CLAIM_TIMEOUT_MS;
+    if (claimIsFresh) return { outcome: "not-claimable" as const };
+  } else if (notification.status !== "FAILED") {
     return { outcome: "not-claimable" as const };
   }
 
-  const now = dependencies.now?.() ?? new Date();
   const claimed = await prisma.notificationLog.updateMany({
     where: {
       id: notification.id,
-      status: expectedStatus,
+      status: notification.status,
       attemptCount: notification.attemptCount,
+      lastAttemptAt: notification.lastAttemptAt,
     },
     data: {
       status: "PENDING",
@@ -191,17 +201,23 @@ async function deliverNotification(
     await (dependencies.sendMessage ?? sendWithConfiguredBot)(chatId, text);
   } catch (error) {
     const errorText = sanitizeDeliveryError(error);
-    await prisma.notificationLog.updateMany({
+    const saved = await prisma.notificationLog.updateMany({
       where: { id: notification.id, status: "PENDING", attemptCount },
       data: { status: "FAILED", errorText, sentAt: null, telegramChatId: chatId },
     });
+    if (saved.count !== 1) {
+      throw new NotificationDeliveryError("result_persistence_conflict");
+    }
     return { outcome: "failed" as const, errorText, attemptCount };
   }
 
-  await prisma.notificationLog.updateMany({
+  const saved = await prisma.notificationLog.updateMany({
     where: { id: notification.id, status: "PENDING", attemptCount },
     data: { status: "SENT", errorText: null, sentAt: now, telegramChatId: chatId },
   });
+  if (saved.count !== 1) {
+    throw new NotificationDeliveryError("result_persistence_conflict");
+  }
   return { outcome: "sent" as const, attemptCount };
 }
 
@@ -218,6 +234,8 @@ export function retryFailedNotification(
 ) {
   return deliverNotification(notificationId, "manual-retry", dependencies);
 }
+
+export const retryNotification = retryFailedNotification;
 
 export async function enqueueCustomerOrderNotification(
   database: NotificationDatabase,

@@ -83,6 +83,18 @@ describe("POST /api/telegram/webhook", () => {
     expect(response.status).toBe(415);
   });
 
+  it("accepts JSON parameters but rejects lookalike media types", async () => {
+    const withCharset = await POST(request(undefined, {
+      "content-type": "Application/JSON; Charset=UTF-8",
+    }));
+    const lookalike = await POST(request(undefined, {
+      "content-type": "application/jsonp",
+    }));
+
+    expect(withCharset.status).toBe(200);
+    expect(lookalike.status).toBe(415);
+  });
+
   it("rejects malformed JSON and invalid updates", async () => {
     const malformed = await POST(request("{"));
     const invalid = await POST(request(JSON.stringify({ update_id: "42" })));

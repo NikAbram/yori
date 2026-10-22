@@ -1,6 +1,10 @@
 import { ZodError } from "zod";
 
-import { privateJson, readBoundedJson } from "@/lib/server-request";
+import {
+  privateJson,
+  readBoundedJson,
+  requestHasJsonContentType,
+} from "@/lib/server-request";
 import {
   parseTelegramBotConfig,
   TelegramBotConfigError,
@@ -33,8 +37,7 @@ export async function POST(request: Request) {
     return privateJson({ error: "Unauthorized." }, 401);
   }
 
-  const contentType = request.headers.get("content-type")?.toLowerCase();
-  if (!contentType?.startsWith("application/json")) {
+  if (!requestHasJsonContentType(request)) {
     return privateJson({ error: "Unsupported media type." }, 415);
   }
 

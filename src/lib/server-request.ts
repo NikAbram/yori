@@ -22,6 +22,14 @@ export function requestHasTrustedOrigin(request: Request) {
   }
 }
 
+export function requestHasJsonContentType(request: Request) {
+  const mediaType = request.headers.get("content-type")
+    ?.split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+  return mediaType === "application/json";
+}
+
 export async function readBoundedJson(request: Request, maximumBytes: number) {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > maximumBytes) {

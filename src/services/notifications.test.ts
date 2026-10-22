@@ -21,6 +21,8 @@ import {
   deliverPendingNotification,
   enqueueCustomerOrderNotification,
   MAX_NOTIFICATION_ATTEMPTS,
+  NOTIFICATION_CLAIM_TIMEOUT_MS,
+  retryNotification,
   retryFailedNotification,
 } from "@/services/notifications";
 
@@ -44,6 +46,7 @@ const pendingManagerNotification = {
   eventType: "ORDER_CREATED" as const,
   status: "PENDING" as const,
   attemptCount: 0,
+  lastAttemptAt: null,
   order,
 };
 
@@ -68,7 +71,12 @@ describe("notification service", () => {
       expect.stringMatching(/Тестовый заказ[\s\S]*YR-ABC1234567[\s\S]*Филадельфия × 2[\s\S]*1\s497\s₽/u),
     );
     expect(mocks.notificationUpdateMany).toHaveBeenNthCalledWith(1, {
-      where: { id: "notification-id", status: "PENDING", attemptCount: 0 },
+      where: {
+        id: "notification-id",
+        status: "PENDING",
+        attemptCount: 0,
+        lastAttemptAt: null,
+      },
       data: {
         status: "PENDING",
         attemptCount: { increment: 1 },
@@ -119,7 +127,11 @@ describe("notification service", () => {
     await expect(retryFailedNotification("notification-id", { sendMessage }))
       .resolves.toEqual({ outcome: "sent", attemptCount: 3 });
     expect(mocks.notificationUpdateMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      where: { id: "notification-id", status: "FAILED", attemptCount: 2 },
+      where: expect.objectContaining({
+        id: "notification-id",
+        status: "FAILED",
+        attemptCount: 2,
+      }),
     }));
 
     mocks.notificationFindUnique.mockResolvedValue({
@@ -129,6 +141,40 @@ describe("notification service", () => {
     });
     await expect(retryFailedNotification("notification-id", { sendMessage }))
       .resolves.toEqual({ outcome: "attempts-exhausted" });
+  });
+
+  it("recovers an unstarted or stale pending delivery without racing a fresh claim", async () => {
+    const now = new Date("2026-10-22T12:00:00Z");
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+
+    await expect(retryNotification("notification-id", { sendMessage, now: () => now }))
+      .resolves.toEqual({ outcome: "sent", attemptCount: 1 });
+
+    mocks.notificationFindUnique.mockResolvedValue({
+      ...pendingManagerNotification,
+      attemptCount: 1,
+      lastAttemptAt: new Date(now.getTime() - NOTIFICATION_CLAIM_TIMEOUT_MS + 1),
+    });
+    await expect(retryNotification("notification-id", { sendMessage, now: () => now }))
+      .resolves.toEqual({ outcome: "not-claimable" });
+
+    mocks.notificationFindUnique.mockResolvedValue({
+      ...pendingManagerNotification,
+      attemptCount: 1,
+      lastAttemptAt: new Date(now.getTime() - NOTIFICATION_CLAIM_TIMEOUT_MS),
+    });
+    await expect(retryNotification("notification-id", { sendMessage, now: () => now }))
+      .resolves.toEqual({ outcome: "sent", attemptCount: 2 });
+  });
+
+  it("does not report delivery as stored when the result compare-and-set loses", async () => {
+    mocks.notificationUpdateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+
+    await expect(deliverPendingNotification("notification-id", {
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+    })).rejects.toThrow("result_persistence_conflict");
   });
 
   it("does not send when another invocation wins the atomic claim", async () => {
