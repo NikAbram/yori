@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   consumeRateLimit: vi.fn(),
   priceCart: vi.fn(),
+  notificationCreate: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -72,6 +73,7 @@ describe("ordering service", () => {
       cashOnDeliveryEnabled: true,
       cardOnDeliveryEnabled: false,
     });
+    mocks.notificationCreate.mockResolvedValue({ id: "notification-id" });
   });
 
   it("creates the order, item snapshots and initial history atomically", async () => {
@@ -80,12 +82,13 @@ describe("ordering service", () => {
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue(order),
       },
+      notificationLog: { create: mocks.notificationCreate },
     };
     mocks.transaction.mockImplementation((callback) => callback(transaction));
 
     const result = await createOrder("user-id", input, { isTest: true });
 
-    expect(result).toEqual({ created: true, order });
+    expect(result).toEqual({ created: true, order, notificationId: "notification-id" });
     expect(mocks.transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: "Serializable",
     });
@@ -103,12 +106,25 @@ describe("ordering service", () => {
       actorType: "TELEGRAM_USER",
       telegramUserId: "user-id",
     }));
+    expect(mocks.notificationCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        orderId: order.id,
+        deduplicationKey: `order-created:manager:${input.idempotencyKey}`,
+        recipientType: "MANAGER",
+        eventType: "ORDER_CREATED",
+      }),
+      select: { id: true },
+    });
   });
 
   it("returns the existing order for the same idempotency key without another write", async () => {
     mocks.orderFindUnique.mockResolvedValue({ userId: "user-id", ...order });
 
-    await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({ created: false, order });
+    await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({
+      created: false,
+      order,
+      notificationId: null,
+    });
     expect(mocks.consumeRateLimit).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
@@ -122,6 +138,7 @@ describe("ordering service", () => {
     await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({
       created: false,
       order,
+      notificationId: null,
     });
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.orderFindUnique).toHaveBeenCalledTimes(2);
@@ -133,6 +150,7 @@ describe("ordering service", () => {
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue(order),
       },
+      notificationLog: { create: mocks.notificationCreate },
     };
     mocks.transaction
       .mockRejectedValueOnce({ code: "P2034" })
@@ -141,6 +159,7 @@ describe("ordering service", () => {
     await expect(createOrder("user-id", input, { isTest: true })).resolves.toEqual({
       created: true,
       order,
+      notificationId: "notification-id",
     });
     expect(mocks.transaction).toHaveBeenCalledTimes(2);
     expect(transaction.order.create).toHaveBeenCalledTimes(1);
@@ -156,6 +175,7 @@ describe("ordering service", () => {
   it("rejects a payment method disabled by current settings", async () => {
     const transaction = {
       order: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      notificationLog: { create: mocks.notificationCreate },
     };
     mocks.transaction.mockImplementation((callback) => callback(transaction));
     mocks.priceCart.mockResolvedValue({
@@ -172,6 +192,7 @@ describe("ordering service", () => {
   it("does not write an order when current catalog pricing fails", async () => {
     const transaction = {
       order: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      notificationLog: { create: mocks.notificationCreate },
     };
     mocks.transaction.mockImplementation((callback) => callback(transaction));
     mocks.priceCart.mockRejectedValue(new CartPricingError("ITEM_UNAVAILABLE"));
@@ -186,6 +207,7 @@ describe("ordering service", () => {
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue(order),
       },
+      notificationLog: { create: mocks.notificationCreate },
     };
     mocks.transaction.mockImplementation((callback) => callback(transaction));
 

@@ -5,9 +5,12 @@ const mocks = vi.hoisted(() => ({
   getOrderAccess: vi.fn(),
   listOrders: vi.fn(),
   createOrder: vi.fn(),
+  after: vi.fn(),
+  deliverNotification: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/server", () => ({ after: mocks.after }));
 vi.mock("@/services/telegram-auth", () => ({
   getCurrentTelegramSession: mocks.getSession,
 }));
@@ -25,6 +28,9 @@ vi.mock("@/services/ordering", () => {
   }
   return { createOrder: mocks.createOrder, OrderingError };
 });
+vi.mock("@/services/notifications", () => ({
+  deliverPendingNotification: mocks.deliverNotification,
+}));
 vi.mock("@/services/cart-pricing", () => {
   class CartPricingError extends Error {
     constructor(public readonly code: string, public readonly details?: object) {
@@ -77,7 +83,9 @@ describe("order route", () => {
     mocks.createOrder.mockResolvedValue({
       created: true,
       order: { id: "order-id", orderNo: "YR-ABC1234567", totalKopeks: 149_700 },
+      notificationId: "notification-id",
     });
+    mocks.after.mockImplementation(() => undefined);
   });
 
   it("requires a verified Telegram session", async () => {
@@ -139,18 +147,35 @@ describe("order route", () => {
       { isTest: true },
     );
     expect(response.headers.get("cache-control")).toBe("no-store, private");
+    expect(mocks.after).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it("reports an idempotent retry without creating a second response resource", async () => {
     mocks.createOrder.mockResolvedValue({
       created: false,
       order: { id: "order-id", orderNo: "YR-ABC1234567", totalKopeks: 149_700 },
+      notificationId: null,
     });
 
     const response = await POST(orderRequest());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(expect.objectContaining({ repeated: true }));
+    expect(mocks.after).not.toHaveBeenCalled();
+  });
+
+  it("keeps the successful order response independent from Telegram delivery failure", async () => {
+    let scheduled: (() => Promise<void>) | undefined;
+    mocks.after.mockImplementation((callback) => {
+      scheduled = callback;
+    });
+    mocks.deliverNotification.mockRejectedValue(new Error("Telegram unavailable"));
+
+    const response = await POST(orderRequest());
+
+    expect(response.status).toBe(201);
+    expect(scheduled).toBeTypeOf("function");
+    await expect(scheduled?.()).resolves.toBeUndefined();
   });
 
   it("rejects cross-origin and client-supplied price fields", async () => {

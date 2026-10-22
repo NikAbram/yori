@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import type { CreateOrderRequest } from "@/lib/checkout-schema";
 import { prisma } from "@/lib/db/prisma";
+import { getOptionalTelegramManagerChatId } from "@/lib/telegram/bot-config";
 import { CartPricingError, priceCartFromDatabase } from "@/services/cart-pricing";
 import { consumeCheckoutRateLimit } from "@/services/checkout-rate-limit";
 
@@ -55,9 +56,10 @@ export async function createOrder(
   options: { isTest: boolean },
 ) {
   const existing = await findIdempotentOrder(userId, input.idempotencyKey);
-  if (existing) return { created: false as const, order: existing };
+  if (existing) return { created: false as const, order: existing, notificationId: null };
 
   await consumeCheckoutRateLimit(userId);
+  const managerChatId = getOptionalTelegramManagerChatId();
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -72,7 +74,7 @@ export async function createOrder(
           }
           const { userId: _userId, ...existingOrder } = idempotentOrder;
           void _userId;
-          return { created: false as const, order: existingOrder };
+          return { created: false as const, order: existingOrder, notificationId: null };
         }
 
         const pricing = await priceCartFromDatabase(transaction, input.items);
@@ -122,14 +124,31 @@ export async function createOrder(
           select: orderSelect,
         });
 
-        return { created: true as const, order: createdOrder };
+        const notification = await transaction.notificationLog.create({
+          data: {
+            orderId: createdOrder.id,
+            deduplicationKey: `order-created:manager:${input.idempotencyKey}`,
+            recipientType: "MANAGER",
+            telegramChatId: managerChatId,
+            eventType: "ORDER_CREATED",
+          },
+          select: { id: true },
+        });
+
+        return {
+          created: true as const,
+          order: createdOrder,
+          notificationId: notification.id,
+        };
       }, { isolationLevel: "Serializable" });
 
       return order;
     } catch (error) {
       if (isPrismaErrorWithCode(error, "P2002")) {
         const idempotentOrder = await findIdempotentOrder(userId, input.idempotencyKey);
-        if (idempotentOrder) return { created: false as const, order: idempotentOrder };
+        if (idempotentOrder) {
+          return { created: false as const, order: idempotentOrder, notificationId: null };
+        }
         if (attempt < 2) continue;
       }
       if (isPrismaErrorWithCode(error, "P2034") && attempt < 2) continue;

@@ -72,3 +72,10 @@ export function parseTelegramBotConfig(
 export function getTelegramBotConfig() {
   return parseTelegramBotConfig(process.env);
 }
+
+export function getOptionalTelegramManagerChatId(
+  environment: Record<string, string | undefined> = process.env,
+) {
+  const value = environment.TELEGRAM_MANAGER_CHAT_ID?.trim();
+  return value && TELEGRAM_CHAT_ID_PATTERN.test(value) ? value : null;
+}

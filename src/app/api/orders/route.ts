@@ -1,9 +1,12 @@
+import { after } from "next/server";
+
 import { createOrderRequestSchema } from "@/lib/checkout-schema";
 import { privateJson, readBoundedJson, requestHasTrustedOrigin } from "@/lib/server-request";
 import { CartPricingError } from "@/services/cart-pricing";
 import { CheckoutRateLimitError } from "@/services/checkout-rate-limit";
 import { listCustomerOrders } from "@/services/customer-orders";
 import { createOrder, OrderingError } from "@/services/ordering";
+import { deliverPendingNotification } from "@/services/notifications";
 import { getOrderAccess } from "@/services/order-access";
 import { getCurrentTelegramSession } from "@/services/telegram-auth";
 
@@ -43,6 +46,11 @@ export async function POST(request: Request) {
     }
 
     const result = await createOrder(session.userId, input.data, { isTest: access.isTest });
+    if (result.notificationId) {
+      after(async () => {
+        await deliverPendingNotification(result.notificationId).catch(() => undefined);
+      });
+    }
     return privateJson({ order: result.order, repeated: !result.created }, result.created ? 201 : 200);
   } catch (error) {
     if (error instanceof RangeError) {

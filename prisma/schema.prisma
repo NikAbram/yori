@@ -237,19 +237,20 @@ model ProcessedTelegramUpdate {
 }
 
 model NotificationLog {
-  id             String                    @id @default(uuid()) @db.Uuid
-  orderId        String?                   @db.Uuid
-  recipientType  NotificationRecipientType
-  telegramChatId String                    @db.VarChar(32)
-  eventType      NotificationEventType
-  status         NotificationStatus        @default(PENDING)
-  attemptCount   Int                       @default(0)
-  errorText      String?                   @db.VarChar(500)
-  lastAttemptAt  DateTime?
-  sentAt         DateTime?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  order          Order?                    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  id               String                    @id @default(uuid()) @db.Uuid
+  orderId          String?                   @db.Uuid
+  deduplicationKey String                    @unique @db.VarChar(160)
+  recipientType    NotificationRecipientType
+  telegramChatId   String?                   @db.VarChar(32)
+  eventType        NotificationEventType
+  status           NotificationStatus        @default(PENDING)
+  attemptCount     Int                       @default(0)
+  errorText        String?                   @db.VarChar(500)
+  lastAttemptAt    DateTime?
+  sentAt           DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  order            Order?                    @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@index([orderId, createdAt])
   @@index([status, createdAt])

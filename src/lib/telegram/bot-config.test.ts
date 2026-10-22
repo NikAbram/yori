@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
+  getOptionalTelegramManagerChatId,
   parseTelegramBotConfig,
   TelegramBotConfigError,
 } from "@/lib/telegram/bot-config";
@@ -68,5 +69,11 @@ describe("Telegram bot configuration", () => {
         TELEGRAM_BOT_USERNAME: username,
       })).toThrow(TelegramBotConfigError);
     }
+  });
+
+  it("reads an optional manager target without exposing or coercing the chat ID", () => {
+    expect(getOptionalTelegramManagerChatId(validEnvironment)).toBe("-1001234567890");
+    expect(getOptionalTelegramManagerChatId({ TELEGRAM_MANAGER_CHAT_ID: "not-a-chat" })).toBeNull();
+    expect(getOptionalTelegramManagerChatId({})).toBeNull();
   });
 });
