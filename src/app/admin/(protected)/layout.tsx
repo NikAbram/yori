@@ -16,6 +16,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
         <nav className="admin-nav" aria-label="Разделы CRM">
           <Link href="/admin">Сводка</Link>
           <Link href="/admin/orders">Заказы</Link>
+          <Link href="/admin/catalog">Каталог</Link>
         </nav>
         <div className="admin-identity">
           <span>{admin.name}</span>
