@@ -9,6 +9,8 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { createPostgresAdapter } from "../src/lib/db/postgres-adapter";
 
 const qaEmail = "qa-admin@yori.invalid";
+const qaTelegramId = "999999999991";
+const qaOrderIdempotencyKey = "qa-crm-stage-5-2";
 const qaPassword = process.env.YORI_E2E_ADMIN_PASSWORD;
 const databaseUrl = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
 const runAddressOctet = (process.pid % 200) + 20;
@@ -27,6 +29,8 @@ test.beforeAll(async () => {
 
   try {
     await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
+    await prisma.order.deleteMany({ where: { idempotencyKey: qaOrderIdempotencyKey } });
+    await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
     const user = await prisma.adminUser.create({
       data: {
         email: qaEmail,
@@ -45,6 +49,37 @@ test.beforeAll(async () => {
         password,
       },
     });
+    const customer = await prisma.telegramUser.create({
+      data: { telegramId: qaTelegramId, firstName: "QA клиент", allowPrivateTest: true },
+      select: { id: true },
+    });
+    await prisma.order.create({
+      data: {
+        orderNo: "QA-5210",
+        userId: customer.id,
+        recipientName: "QA клиент",
+        phone: "+7 900 000-00-00",
+        city: "Тестовый город",
+        street: "Тестовая",
+        house: "1",
+        subtotalKopeks: 64_900,
+        deliveryKopeks: 19_900,
+        totalKopeks: 84_800,
+        paymentMethod: "CASH_ON_DELIVERY",
+        status: "NEW",
+        isTest: true,
+        idempotencyKey: qaOrderIdempotencyKey,
+        consentAcceptedAt: new Date(),
+        items: {
+          create: {
+            productNameSnapshot: "Филадельфия классическая",
+            unitPriceKopeks: 64_900,
+            quantity: 1,
+            lineTotalKopeks: 64_900,
+          },
+        },
+      },
+    });
   } finally {
     await prisma.$disconnect();
   }
@@ -54,6 +89,8 @@ test.afterAll(async () => {
   if (!qaPassword || !databaseUrl) return;
   const prisma = createQaClient();
   try {
+    await prisma.order.deleteMany({ where: { idempotencyKey: qaOrderIdempotencyKey } });
+    await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
     await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
   } finally {
     await prisma.$disconnect();
@@ -119,13 +156,28 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.getByRole("button", { name: "Войти" }).click();
 
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Рабочая область YŌRI" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Сегодня видно главное" })).toBeVisible();
+  await expect(page.getByText("Реальная выручка")).toBeVisible();
+  await expect(page.getByText("QA-5210")).toBeVisible();
+  await expect(page.getByText("Тестовый", { exact: true })).toBeVisible();
   await page.screenshot({ path: join(tmpdir(), "yori-admin-home-desktop.png") });
   const sessionCookie = (await page.context().cookies()).find((cookie) =>
     cookie.name.includes("yori-admin.session_token"),
   );
   expect(sessionCookie).toMatchObject({ httpOnly: true, sameSite: "Lax", secure: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(messages).toEqual([]);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("link", { name: "Заказы" }).click();
+  await expect(page).toHaveURL(/\/admin\/orders$/);
+  await expect(page.getByRole("heading", { name: "Все заказы" })).toBeVisible();
+  await page.getByLabel("Номер или телефон").fill("order-that-does-not-exist");
+  await page.getByRole("button", { name: "Применить" }).click();
+  await expect(page).toHaveURL(/q=order-that-does-not-exist/);
+  await expect(page.getByRole("heading", { name: "Заказов не найдено" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "yori-admin-orders-mobile.png") });
   expect(messages).toEqual([]);
 
   await page.getByRole("button", { name: "Выйти" }).click();
