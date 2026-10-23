@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ProductCard } from "@/components/miniapp/product-card";
 import type { PublicCatalog } from "@/types/catalog";
 
-export function HomeExperience({ categories, products }: PublicCatalog) {
+export function HomeExperience({ categories, products, brandName, brandDescription }: PublicCatalog & { brandName: string; brandDescription: string | null }) {
   const [query, setQuery] = useState("");
   const normalized = query.trim().toLocaleLowerCase("ru");
   const results = normalized ? products.filter((product) => product.name.toLocaleLowerCase("ru").includes(normalized)).slice(0, 4) : [];
@@ -20,9 +20,9 @@ export function HomeExperience({ categories, products }: PublicCatalog) {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-media"><Image src="/images/products/sushi-set.webp" alt="Большой сет свежих роллов" fill preload sizes="100vw" /></div>
           <div className="hero-copy">
-            <p className="hero-kicker">Собрано вручную. Без лишнего.</p>
+            <p className="hero-kicker">{brandName}</p>
             <h1 id="hero-title" className="display">Вкус, который держит форму</h1>
-            <p>Роллы, суши и тёплые блюда в точной, современной подаче.</p>
+            <p>{brandDescription ?? "Роллы, суши и тёплые блюда в точной, современной подаче."}</p>
             <div className="hero-actions">
               <Link className="primary-button" href="/catalog">Открыть меню <ArrowRight size={18} aria-hidden="true" /></Link>
               <Link className="secondary-button" href="/catalog?category=sets">Выбрать сет</Link>

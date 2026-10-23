@@ -13,7 +13,7 @@ import {
   type CheckoutFormInput,
   type CheckoutFormValues,
 } from "@/lib/checkout-schema";
-import { MIN_ORDER_KOPEKS, deliveryFor, formatMoney } from "@/lib/money";
+import { deliveryFor, formatMoney, type DeliveryPricing } from "@/lib/money";
 import { notifyTelegram } from "@/lib/telegram-client";
 import type { Product } from "@/types/catalog";
 
@@ -52,10 +52,12 @@ export function CheckoutExperience({
   products,
   access,
   hasTelegramSession,
+  pricing,
 }: {
   products: Product[];
   access: CheckoutAccess;
   hasTelegramSession: boolean;
+  pricing: DeliveryPricing & { minimumOrderKopeks: number };
 }) {
   const { lines, hydrated, clear } = useCart();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -86,9 +88,9 @@ export function CheckoutExperience({
   const unavailableLines = detailedLines.filter((line) => !line.product.isAvailable);
   const changedPriceLines = detailedLines.filter((line) => line.priceKopeksSnapshot !== undefined && line.priceKopeksSnapshot !== line.product.priceKopeks);
   const subtotal = detailedLines.reduce((sum, line) => sum + line.product.priceKopeks * line.quantity, 0);
-  const delivery = deliveryFor(subtotal);
+  const delivery = deliveryFor(subtotal, pricing);
   const total = subtotal + delivery;
-  const minimumRemaining = Math.max(0, MIN_ORDER_KOPEKS - subtotal);
+  const minimumRemaining = Math.max(0, pricing.minimumOrderKopeks - subtotal);
   const hasPaymentMethod = access.cashOnDeliveryEnabled || access.cardOnDeliveryEnabled;
   const cartBlocked = missingCount > 0
     || unavailableLines.length > 0

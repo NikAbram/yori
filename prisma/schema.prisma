@@ -53,6 +53,7 @@ enum AdminAuditAction {
   ORDER_STATUS_CHANGED
   ORDER_NOTE_ADDED
   NOTIFICATION_RETRY_REQUESTED
+  SETTINGS_UPDATED
 }
 
 model TelegramUser {
@@ -355,6 +356,8 @@ model NotificationLog {
 
 model SiteSettings {
   id                         String     @id @default("default") @db.VarChar(32)
+  brandName                  String     @default("YŌRI") @db.VarChar(80)
+  brandDescription           String?
   isOrderingEnabled          Boolean    @default(false)
   deliveryKopeks             Int        @default(19900)
   freeDeliveryFromKopeks     Int?       @default(180000)
@@ -365,6 +368,7 @@ model SiteSettings {
   deliveryTerms              String?
   privacyText                String?
   operatorName               String?    @db.VarChar(160)
+  managerTelegramChatId      String?    @db.VarChar(32)
   commercialHostingConfirmed Boolean    @default(false)
   liveReadyAt                DateTime?
   updatedByAdminId           String?    @db.Uuid

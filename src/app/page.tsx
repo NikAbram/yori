@@ -1,14 +1,15 @@
 import { Suspense } from "react";
 import { HomeExperience } from "@/components/miniapp/home-experience";
 import { getPublicCatalog } from "@/services/catalog";
+import { getPublicSiteSettings } from "@/services/settings";
 
 export default function HomePage() {
   return <Suspense fallback={<HomeLoading />}><HomeContent /></Suspense>;
 }
 
 async function HomeContent() {
-  const catalog = await getPublicCatalog();
-  return <HomeExperience {...catalog} />;
+  const [catalog, settings] = await Promise.all([getPublicCatalog(), getPublicSiteSettings()]);
+  return <HomeExperience {...catalog} brandName={settings.brandName} brandDescription={settings.brandDescription} />;
 }
 
 function HomeLoading() {

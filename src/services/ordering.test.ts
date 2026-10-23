@@ -72,6 +72,7 @@ describe("ordering service", () => {
       totalKopeks: 149_700,
       cashOnDeliveryEnabled: true,
       cardOnDeliveryEnabled: false,
+      managerTelegramChatId: null,
     });
     mocks.notificationCreate.mockResolvedValue({ id: "notification-id" });
   });
@@ -181,6 +182,7 @@ describe("ordering service", () => {
     mocks.priceCart.mockResolvedValue({
       lines: [], subtotalKopeks: 70_000, deliveryKopeks: 0, discountKopeks: 0,
       totalKopeks: 70_000, cashOnDeliveryEnabled: false, cardOnDeliveryEnabled: false,
+      managerTelegramChatId: null,
     });
 
     await expect(createOrder("user-id", input, { isTest: true })).rejects.toThrowError(

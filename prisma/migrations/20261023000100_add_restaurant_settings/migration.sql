@@ -1,0 +1,6 @@
+ALTER TYPE "AdminAuditAction" ADD VALUE 'SETTINGS_UPDATED';
+
+ALTER TABLE "SiteSettings"
+ADD COLUMN "brandName" VARCHAR(80) NOT NULL DEFAULT 'YŌRI',
+ADD COLUMN "brandDescription" TEXT,
+ADD COLUMN "managerTelegramChatId" VARCHAR(32);

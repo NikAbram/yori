@@ -13,6 +13,7 @@ const settings = {
   minimumOrderKopeks: 70_000,
   cashOnDeliveryEnabled: true,
   cardOnDeliveryEnabled: false,
+  managerTelegramChatId: null,
 };
 
 describe("cart pricing", () => {

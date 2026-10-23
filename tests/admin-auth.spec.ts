@@ -278,6 +278,34 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: join(tmpdir(), "yori-admin-catalog-mobile.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("link", { name: "Настройки" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings$/);
+  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();
+  await expect(page.getByText("Закрытое тестирование")).toBeVisible();
+  await expect(page.getByText("Меняется только в окружении сервера", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Готовность к live" })).toBeVisible();
+  const brandDescription = page.getByLabel("Короткое описание");
+  const originalBrandDescription = await brandDescription.inputValue();
+  await brandDescription.fill("QA: настройки поступают из базы данных");
+  await page.getByRole("button", { name: "Сохранить настройки" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\?result=saved$/);
+  await expect(page.getByRole("status")).toContainText("Настройки сохранены");
+  await page.goto("/");
+  await expect(page.getByText("QA: настройки поступают из базы данных")).toBeVisible();
+
+  await page.goto("/admin/settings");
+  await page.getByLabel("Короткое описание").fill(originalBrandDescription);
+  await page.getByRole("button", { name: "Сохранить настройки" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\?result=saved$/);
+  await page.screenshot({ path: join(tmpdir(), "yori-admin-settings-desktop.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin/settings");
+  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "yori-admin-settings-mobile.png"), fullPage: true });
   expect(messages).toEqual([]);
 
   await page.getByRole("button", { name: "Выйти" }).click();

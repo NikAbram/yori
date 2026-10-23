@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { CartProvider } from "@/components/cart/cart-provider";
 import { AppShell } from "@/components/miniapp/app-shell";
+import { getPublicSiteSettings } from "@/services/settings";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,12 +19,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const settings = await getPublicSiteSettings();
   return (
     <html lang="ru" data-scroll-behavior="smooth">
       <body>
         <CartProvider>
-          <AppShell>{children}</AppShell>
+          <AppShell brandName={settings.brandName} isPublicOrderingOpen={settings.isPublicOrderingOpen}>{children}</AppShell>
         </CartProvider>
       </body>
     </html>

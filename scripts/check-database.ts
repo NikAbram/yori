@@ -92,12 +92,15 @@ async function checkDatabase() {
       prisma.siteSettings.findUnique({
         where: { id: "default" },
         select: {
+          brandName: true,
           isOrderingEnabled: true,
           cashOnDeliveryEnabled: true,
           cardOnDeliveryEnabled: true,
           minimumOrderKopeks: true,
           deliveryKopeks: true,
           freeDeliveryFromKopeks: true,
+          commercialHostingConfirmed: true,
+          liveReadyAt: true,
         },
       }),
       prisma.$queryRaw<Array<{ migration_name: string }>>`

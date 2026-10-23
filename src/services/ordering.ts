@@ -59,8 +59,6 @@ export async function createOrder(
   if (existing) return { created: false as const, order: existing, notificationId: null };
 
   await consumeCheckoutRateLimit(userId);
-  const managerChatId = getOptionalTelegramManagerChatId();
-
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const order = await prisma.$transaction(async (transaction) => {
@@ -78,6 +76,7 @@ export async function createOrder(
         }
 
         const pricing = await priceCartFromDatabase(transaction, input.items);
+        const managerChatId = pricing.managerTelegramChatId ?? getOptionalTelegramManagerChatId();
         const paymentEnabled = input.paymentMethod === "CASH_ON_DELIVERY"
           ? pricing.cashOnDeliveryEnabled
           : pricing.cardOnDeliveryEnabled;

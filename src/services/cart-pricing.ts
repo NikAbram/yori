@@ -21,6 +21,7 @@ export type CartPricing = {
   totalKopeks: number;
   cashOnDeliveryEnabled: boolean;
   cardOnDeliveryEnabled: boolean;
+  managerTelegramChatId: string | null;
 };
 
 type CartPricingErrorCode =
@@ -53,6 +54,7 @@ type PricingSettings = {
   minimumOrderKopeks: number;
   cashOnDeliveryEnabled: boolean;
   cardOnDeliveryEnabled: boolean;
+  managerTelegramChatId: string | null;
 };
 
 function isSafeKopekAmount(value: number) {
@@ -122,6 +124,7 @@ export function calculateCartPricing(
     totalKopeks,
     cashOnDeliveryEnabled: settings.cashOnDeliveryEnabled,
     cardOnDeliveryEnabled: settings.cardOnDeliveryEnabled,
+    managerTelegramChatId: settings.managerTelegramChatId,
   };
 }
 
@@ -148,6 +151,7 @@ export async function priceCartFromDatabase(
         minimumOrderKopeks: true,
         cashOnDeliveryEnabled: true,
         cardOnDeliveryEnabled: true,
+        managerTelegramChatId: true,
       },
     }),
   ]);

@@ -21,6 +21,7 @@ const readySettings = {
   deliveryTerms: "Зона и условия доставки",
   privacyText: "Политика обработки данных",
   operatorName: "Оператор YŌRI",
+  managerTelegramChatId: "-1001234567890",
   commercialHostingConfirmed: true,
   liveReadyAt: new Date("2026-10-20T12:00:00Z"),
 };
@@ -91,6 +92,7 @@ describe("order access policy", () => {
 
   it("requires ordering, a payment method and complete live readiness data", async () => {
     vi.stubEnv("ORDER_MODE", "live");
+    vi.stubEnv("TELEGRAM_MANAGER_CHAT_ID", "");
     const session = { telegramId: "42", allowPrivateTest: false };
 
     for (const settings of [
@@ -100,6 +102,7 @@ describe("order access policy", () => {
       { ...readySettings, deliveryTerms: null },
       { ...readySettings, contactText: null },
       { ...readySettings, privacyText: null },
+      { ...readySettings, managerTelegramChatId: null },
       { ...readySettings, liveReadyAt: null },
     ]) {
       mocks.settingsFindUnique.mockResolvedValueOnce(settings);

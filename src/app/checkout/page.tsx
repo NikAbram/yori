@@ -4,6 +4,7 @@ import { CheckoutExperience } from "@/components/miniapp/checkout-experience";
 import { getPublicCatalog } from "@/services/catalog";
 import { getOrderAccess } from "@/services/order-access";
 import { getCurrentTelegramSession } from "@/services/telegram-auth";
+import { getPublicSiteSettings } from "@/services/settings";
 
 export const metadata: Metadata = { title: "Оформление", robots: { index: false, follow: false } };
 
@@ -12,9 +13,10 @@ export default function CheckoutPage() {
 }
 
 async function CheckoutContent() {
-  const [catalog, session] = await Promise.all([
+  const [catalog, session, settings] = await Promise.all([
     getPublicCatalog(),
     getCurrentTelegramSession(),
+    getPublicSiteSettings(),
   ]);
   const access = await getOrderAccess(session);
   return (
@@ -26,6 +28,11 @@ async function CheckoutContent() {
         cardOnDeliveryEnabled: access.cardOnDeliveryEnabled,
       }}
       hasTelegramSession={Boolean(session)}
+      pricing={{
+        deliveryKopeks: settings.deliveryKopeks,
+        freeDeliveryFromKopeks: settings.freeDeliveryFromKopeks,
+        minimumOrderKopeks: settings.minimumOrderKopeks,
+      }}
     />
   );
 }

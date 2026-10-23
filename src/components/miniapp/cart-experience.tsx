@@ -5,10 +5,10 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useCart } from "@/components/cart/cart-provider";
-import { deliveryFor, formatMoney } from "@/lib/money";
+import { deliveryFor, formatMoney, type DeliveryPricing } from "@/lib/money";
 import type { Product } from "@/types/catalog";
 
-export function CartExperience({ products }: { products: Product[] }) {
+export function CartExperience({ products, pricing }: { products: Product[]; pricing: DeliveryPricing }) {
   const { lines, hydrated, setQuantity, removeItem, clear } = useCart();
   const productsById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
@@ -19,7 +19,7 @@ export function CartExperience({ products }: { products: Product[] }) {
     return product ? [{ ...line, product }] : [];
   });
   const subtotal = detailedLines.reduce((sum, line) => sum + line.product.priceKopeks * line.quantity, 0);
-  const delivery = deliveryFor(subtotal);
+  const delivery = deliveryFor(subtotal, pricing);
   const total = subtotal + delivery;
 
   if (!hydrated) return <div className="page-width skeleton" style={{ minHeight: 450, borderRadius: 24 }} role="status" aria-live="polite" aria-busy="true"><span className="visually-hidden">Восстанавливаем корзину</span></div>;

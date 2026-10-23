@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
+import { getOptionalTelegramManagerChatId } from "@/lib/telegram/bot-config";
 
 const TELEGRAM_ID_PATTERN = /^[1-9]\d{0,31}$/;
 
@@ -12,6 +13,7 @@ const settingsSelect = {
   deliveryTerms: true,
   privacyText: true,
   operatorName: true,
+  managerTelegramChatId: true,
   commercialHostingConfirmed: true,
   liveReadyAt: true,
 } as const;
@@ -88,7 +90,8 @@ export async function getOrderAccess(session: OrderAccessSession | null): Promis
       && hasText(settings.operatorName)
       && hasText(settings.deliveryTerms)
       && hasText(settings.contactText)
-      && hasText(settings.privacyText);
+      && hasText(settings.privacyText)
+      && Boolean(settings.managerTelegramChatId ?? getOptionalTelegramManagerChatId());
     if (!liveReady) return CLOSED_ACCESS;
   }
 
