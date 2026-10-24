@@ -35,6 +35,19 @@ test("главный путь: поиск, каталог, товар, корз�
   await page.screenshot({ path: join(tmpdir(), "yori-cart-mobile.png"), fullPage: false });
   await page.reload();
   await expect(page.getByRole("complementary", { name: "Сумма заказа" }).getByText("1 198 ₽")).toBeVisible();
+
+  await page.getByRole("button", { name: "Уменьшить количество Темпура с креветкой" }).click();
+  await expect(page.getByRole("complementary", { name: "Сумма заказа" }).getByText("599 ₽")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("complementary", { name: "Сумма заказа" }).getByText("599 ₽")).toBeVisible();
+  await page.getByRole("button", { name: "Удалить" }).click();
+  await expect(page.getByRole("heading", { name: "Корзина пока пуста" })).toBeVisible();
+
+  await page.goto("/catalog");
+  await page.getByRole("button", { name: "Добавить Темпура с креветкой в корзину" }).click();
+  await page.getByRole("link", { name: /Корзина/ }).click();
+  await page.getByRole("button", { name: "Очистить" }).click();
+  await expect(page.getByRole("heading", { name: "Корзина пока пуста" })).toBeVisible();
   expect(runtimeErrors).toEqual([]);
 });
 

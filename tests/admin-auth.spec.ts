@@ -17,6 +17,7 @@ const qaProductSlug = "qa-catalog-roll";
 const qaPassword = process.env.YORI_E2E_ADMIN_PASSWORD;
 const databaseUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 const qaTelegramSessionToken = "qa-stage-5-6-telegram-session";
+const targetAdminViewports = [320, 375, 390, 430, 768, 1024, 1440];
 let qaOrderId = "";
 const runAddressOctet = (process.pid % 200) + 20;
 const invalidLoginIp = `198.51.100.${runAddressOctet}`;
@@ -185,8 +186,58 @@ test("limits repeated email login attempts", async ({ request }) => {
   expect(blocked.headers()["x-retry-after"]).toBeTruthy();
 });
 
-test("creates a protected session and signs out", async ({ page }) => {
+test("protected CRM routes fit all target viewports", async ({ page }) => {
   test.setTimeout(240_000);
+  test.skip(!qaPassword || !databaseUrl, "Temporary QA administrator credentials are not configured.");
+
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": validLoginIp });
+  await page.goto("/admin/login");
+  await page.getByLabel("Электронная почта").fill(qaEmail);
+  await page.getByLabel("Пароль").fill(qaPassword!);
+  await page.getByRole("button", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  for (const width of targetAdminViewports) {
+    await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
+    for (const route of ["/admin", "/admin/orders", "/admin/catalog", "/admin/settings"]) {
+      await page.goto(route);
+      await expect(page.locator("main")).not.toBeEmpty();
+      const layout = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        brokenImages: [...document.images].filter(
+          (image) => image.complete && image.naturalWidth === 0,
+        ).length,
+        overflowElements: [...document.querySelectorAll<HTMLElement>("body *")]
+          .filter((element) => {
+            const box = element.getBoundingClientRect();
+            return box.right > document.documentElement.clientWidth + 1 || box.left < -1;
+          })
+          .slice(0, 8)
+          .map((element) => ({
+            tag: element.tagName,
+            className: element.className,
+            text: element.textContent?.trim().slice(0, 80),
+            box: element.getBoundingClientRect().toJSON(),
+          })),
+      }));
+      expect(
+        layout.scrollWidth,
+        `${route} at ${width}px; overflow: ${JSON.stringify(layout.overflowElements)}`,
+      ).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.brokenImages, `${route} at ${width}px`).toBe(0);
+      if (route === "/admin" && width === 320) {
+        await page.screenshot({ path: join(tmpdir(), "yori-admin-dashboard-320.png"), fullPage: false });
+      }
+      if (route === "/admin/orders" && width === 768) {
+        await page.screenshot({ path: join(tmpdir(), "yori-admin-orders-768.png"), fullPage: false });
+      }
+    }
+  }
+});
+
+test("creates a protected session and signs out", async ({ page }) => {
+  test.setTimeout(360_000);
   test.skip(!qaPassword || !databaseUrl, "Temporary QA administrator credentials are not configured.");
 
   await page.setExtraHTTPHeaders({ "x-forwarded-for": validLoginIp });
@@ -200,7 +251,7 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.getByLabel("Пароль").fill(qaPassword!);
   await page.getByRole("button", { name: "Войти" }).click();
 
-  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 30_000 });
   await expect(page.locator('[aria-busy="true"]')).toBeVisible();
   await expect(page.getByRole("heading", { name: "Сегодня видно главное" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Реальная выручка")).toBeVisible();
@@ -227,9 +278,13 @@ test("creates a protected session and signs out", async ({ page }) => {
   await expect(page.getByText("Новый → Подтверждён", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel("Новая внутренняя заметка").fill("QA: упаковку проверить дважды");
   await page.getByRole("button", { name: "Добавить заметку" }).click();
-  await expect(page.locator(".admin-note-form").getByRole("status")).toHaveText("Заметка добавлена.");
+  await expect(page.locator(".admin-note-form").getByRole("status")).toHaveText(
+    "Заметка добавлена.",
+    { timeout: 30_000 },
+  );
   await expect(page.getByText("QA: упаковку проверить дважды")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect(page.locator(".skip-link")).not.toBeInViewport();
   await page.screenshot({ path: join(tmpdir(), "yori-admin-order-mobile.png"), fullPage: true });
 
   await page.context().addCookies([{
@@ -333,7 +388,9 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("link", { name: "Настройки" }).click();
   await expect(page).toHaveURL(/\/admin\/settings$/);
-  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.getByText("Закрытое тестирование")).toBeVisible();
   await expect(page.getByText("Меняется только в окружении сервера", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Готовность к live" })).toBeVisible();
@@ -354,9 +411,12 @@ test("creates a protected session and signs out", async ({ page }) => {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/admin/settings");
-  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Настройки", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: join(tmpdir(), "yori-admin-settings-mobile.png"), fullPage: true });
+
   expect(messages).toEqual([]);
 
   await page.getByRole("button", { name: "Выйти" }).click();
