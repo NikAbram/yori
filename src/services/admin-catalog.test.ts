@@ -42,6 +42,7 @@ import {
   createAdminProduct,
   deleteAdminCategory,
   deleteAdminProduct,
+  getAdminCategoryEditor,
   getAdminCatalogOverview,
   getAdminProductEditor,
   updateAdminCategory,
@@ -168,5 +169,29 @@ describe("admin catalog service", () => {
     expect(mocks.categoryCreate).not.toHaveBeenCalled();
     expect(mocks.productUpdateMany).not.toHaveBeenCalled();
     expect(mocks.productDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("protects every administrative catalog read and mutation before Prisma", async () => {
+    mocks.requireCurrentAdmin.mockRejectedValue(new Error("redirect"));
+
+    const operations = [
+      () => getAdminCatalogOverview(),
+      () => getAdminCategoryEditor("category-id"),
+      () => getAdminProductEditor("product-id"),
+      () => createAdminCategory(categoryData),
+      () => updateAdminCategory("category-id", categoryData),
+      () => deleteAdminCategory("category-id"),
+      () => createAdminProduct(productData),
+      () => updateAdminProduct("product-id", productData),
+      () => deleteAdminProduct("product-id"),
+    ];
+
+    for (const operation of operations) await expect(operation()).rejects.toThrow("redirect");
+    expect(mocks.requireCurrentAdmin).toHaveBeenCalledTimes(operations.length);
+    expect(mocks.categoryFindMany).not.toHaveBeenCalled();
+    expect(mocks.categoryFindUnique).not.toHaveBeenCalled();
+    expect(mocks.productFindMany).not.toHaveBeenCalled();
+    expect(mocks.productFindUnique).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });

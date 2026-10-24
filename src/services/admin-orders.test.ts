@@ -65,12 +65,17 @@ describe("administrative order reads", () => {
     }));
   });
 
-  it("does not query order data when authorization fails", async () => {
+  it("protects every administrative order read before Prisma", async () => {
     mocks.requireCurrentAdmin.mockRejectedValue(new Error("redirect"));
 
+    await expect(getAdminDashboard(7, new Date("2026-10-22T12:00:00Z"))).rejects.toThrow("redirect");
     await expect(listAdminOrders({ q: "", page: 1 })).rejects.toThrow("redirect");
+    await expect(getAdminOrderDetail("order-id")).rejects.toThrow("redirect");
+    expect(mocks.requireCurrentAdmin).toHaveBeenCalledTimes(3);
+    expect(mocks.connection).not.toHaveBeenCalled();
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
   });
 
   it("authenticates detail reads and selects the operational relations explicitly", async () => {

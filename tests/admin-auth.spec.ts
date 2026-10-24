@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { expect, test } from "@playwright/test";
@@ -15,9 +16,12 @@ const qaCategorySlug = "qa-stage-5-4";
 const qaProductSlug = "qa-catalog-roll";
 const qaPassword = process.env.YORI_E2E_ADMIN_PASSWORD;
 const databaseUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+const qaTelegramSessionToken = "qa-stage-5-6-telegram-session";
+let qaOrderId = "";
 const runAddressOctet = (process.pid % 200) + 20;
 const invalidLoginIp = `198.51.100.${runAddressOctet}`;
 const validLoginIp = `203.0.113.${runAddressOctet}`;
+const rateLimitIp = `192.0.2.${runAddressOctet}`;
 
 function createQaClient() {
   if (!databaseUrl) throw new Error("A database URL is required for the admin e2e setup.");
@@ -36,6 +40,7 @@ test.beforeAll(async () => {
     await prisma.adminAuditLog.deleteMany({ where: { adminUser: { email: qaEmail } } });
     await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
     await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
+    await prisma.adminAuthRateLimit.deleteMany({ where: { key: { startsWith: `${rateLimitIp}|` } } });
     const user = await prisma.adminUser.create({
       data: {
         email: qaEmail,
@@ -58,7 +63,7 @@ test.beforeAll(async () => {
       data: { telegramId: qaTelegramId, firstName: "QA клиент", allowPrivateTest: true },
       select: { id: true },
     });
-    await prisma.order.create({
+    const order = await prisma.order.create({
       data: {
         orderNo: "QA-5210",
         userId: customer.id,
@@ -88,6 +93,14 @@ test.beforeAll(async () => {
         },
       },
     });
+    qaOrderId = order.id;
+    await prisma.telegramSession.create({
+      data: {
+        tokenHash: createHash("sha256").update(qaTelegramSessionToken).digest("hex"),
+        userId: customer.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+      },
+    });
   } finally {
     await prisma.$disconnect();
   }
@@ -103,6 +116,7 @@ test.afterAll(async () => {
     await prisma.telegramUser.deleteMany({ where: { telegramId: qaTelegramId } });
     await prisma.adminAuditLog.deleteMany({ where: { adminUser: { email: qaEmail } } });
     await prisma.adminUser.deleteMany({ where: { email: qaEmail } });
+    await prisma.adminAuthRateLimit.deleteMany({ where: { key: { startsWith: `${rateLimitIp}|` } } });
   } finally {
     await prisma.$disconnect();
   }
@@ -152,8 +166,27 @@ test("uses one generic error for invalid credentials", async ({ page }) => {
   );
 });
 
+test("limits repeated email login attempts", async ({ request }) => {
+  test.skip(!databaseUrl, "A database URL is required for the persistent login rate limit.");
+
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const response = await request.post("/api/admin/auth/sign-in/email", {
+      headers: { "x-forwarded-for": rateLimitIp },
+      data: { email: "rate-limit@yori.invalid", password: "wrong-password-123" },
+    });
+    expect(response.status(), `attempt ${attempt} should reach credential validation`).not.toBe(429);
+  }
+
+  const blocked = await request.post("/api/admin/auth/sign-in/email", {
+    headers: { "x-forwarded-for": rateLimitIp },
+    data: { email: "rate-limit@yori.invalid", password: "wrong-password-123" },
+  });
+  expect(blocked.status()).toBe(429);
+  expect(blocked.headers()["x-retry-after"]).toBeTruthy();
+});
+
 test("creates a protected session and signs out", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   test.skip(!qaPassword || !databaseUrl, "Temporary QA administrator credentials are not configured.");
 
   await page.setExtraHTTPHeaders({ "x-forwarded-for": validLoginIp });
@@ -168,7 +201,8 @@ test("creates a protected session and signs out", async ({ page }) => {
   await page.getByRole("button", { name: "Войти" }).click();
 
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Сегодня видно главное" })).toBeVisible();
+  await expect(page.locator('[aria-busy="true"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Сегодня видно главное" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Реальная выручка")).toBeVisible();
   await expect(page.getByText("QA-5210")).toBeVisible();
   await expect(page.getByText("Тестовый", { exact: true })).toBeVisible();
@@ -189,14 +223,31 @@ test("creates a protected session and signs out", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "QA-5210" })).toBeVisible();
   await expect(page.getByText("Контакты и доставка")).toBeVisible();
   await expect(page.getByLabel("Следующий статус")).toHaveValue("CONFIRMED");
+  await page.getByRole("button", { name: "Изменить статус" }).click();
+  await expect(page.getByText("Новый → Подтверждён", { exact: true })).toBeVisible({ timeout: 30_000 });
   await page.getByLabel("Новая внутренняя заметка").fill("QA: упаковку проверить дважды");
   await page.getByRole("button", { name: "Добавить заметку" }).click();
-  await expect(page.getByRole("status")).toHaveText("Заметка добавлена.");
+  await expect(page.locator(".admin-note-form").getByRole("status")).toHaveText("Заметка добавлена.");
   await expect(page.getByText("QA: упаковку проверить дважды")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: join(tmpdir(), "yori-admin-order-mobile.png"), fullPage: true });
 
-  await page.getByRole("link", { name: "Все заказы" }).click();
+  await page.context().addCookies([{
+    name: "__Host-yori-telegram-session",
+    value: qaTelegramSessionToken,
+    domain: "127.0.0.1",
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+  }]);
+  await page.goto(`/orders/${qaOrderId}`);
+  await expect(page.getByRole("heading", { name: "QA-5210" })).toBeVisible();
+  await expect(page.locator(".status-seal")).toHaveText("Подтверждён");
+  await expect(page.locator('[aria-current="step"]')).toContainText("Команда приняла заказ в работу.");
+  await page.screenshot({ path: join(tmpdir(), "yori-customer-order-confirmed-mobile.png"), fullPage: true });
+
+  await page.goto("/admin/orders");
   await page.getByLabel("Номер или телефон").fill("order-that-does-not-exist");
   await page.getByRole("button", { name: "Применить" }).click();
   await expect(page).toHaveURL(/q=order-that-does-not-exist/);
